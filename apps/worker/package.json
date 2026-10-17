@@ -1,0 +1,28 @@
+{
+  "name": "@uc/worker",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@uc/contracts": "workspace:*",
+    "@uc/db": "workspace:*",
+    "bullmq": "^5.34.0",
+    "drizzle-orm": "^0.45.2",
+    "ioredis": "^5.4.2",
+    "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10",
+    "@uc/config": "workspace:*",
+    "pg": "^8.13.1",
+    "tsx": "^4.19.2",
+    "vitest": "^3.0.5"
+  }
+}

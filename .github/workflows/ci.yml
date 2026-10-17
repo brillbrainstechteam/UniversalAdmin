@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci_only
+          POSTGRES_DB: postgres
+        ports: ['5440:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 3s --health-timeout 3s --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports: ['6390:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 3s --health-timeout 3s --health-retries 30
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgres://uc_app:uc_app_dev_pw@localhost:5440/uc_dev
+      DATABASE_OWNER_URL: postgres://uc_owner:uc_owner_dev_pw@localhost:5440/uc_dev
+      TEST_DATABASE_URL: postgres://uc_app:uc_app_dev_pw@localhost:5440/uc_test
+      TEST_DATABASE_OWNER_URL: postgres://uc_owner:uc_owner_dev_pw@localhost:5440/uc_test
+      REDIS_URL: redis://localhost:6390
+      API_PUBLIC_URL: http://localhost:4100
+      ALLOWED_ORIGINS: http://localhost:3100,http://localhost:3101
+      MERCHANT_ADMIN_URL: http://localhost:3100
+      STOREFRONT_GATEWAY_KEY: ci-only-storefront-gateway-key-0123456789abcdef
+      SEED_DEMO_PASSWORD: CiDemoPass!2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Bootstrap database roles (same script as docker-compose)
+        run: PGPASSWORD=postgres_ci_only psql -h localhost -p 5440 -U postgres -v ON_ERROR_STOP=1 -f infra/postgres/init.sql
+      - run: pnpm install --frozen-lockfile
+      - name: Dependency audit (high and critical)
+        run: pnpm audit --audit-level high
+      - run: pnpm --filter "./packages/**" run --if-present build
+      - name: Format
+        run: pnpm format:check
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: OpenAPI baseline is up to date
+        run: pnpm openapi:generate && git diff --exit-code docs/api/openapi.json
+      - name: Unit, migration and integration tests
+        run: pnpm test
+      - name: Build apps
+        run: pnpm build
+      - name: Migrate and seed (deterministic from clean DB)
+        run: pnpm db:migrate && pnpm db:seed
+      - name: Install Playwright browser
+        run: pnpm --filter @uc/e2e exec playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: pnpm test:e2e
+        env:
+          E2E_BROWSER_CHANNEL: chromium
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report

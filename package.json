@@ -1,0 +1,53 @@
+{
+  "name": "universal-commerce-os",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d --wait",
+    "infra:down": "docker compose -f infra/docker-compose.yml down",
+    "build": "pnpm -r --filter ./packages/** run build && pnpm -r --filter ./apps/** run build",
+    "db:migrate": "pnpm --filter @uc/db run migrate",
+    "db:seed": "pnpm --filter @uc/db run seed",
+    "db:reset": "pnpm --filter @uc/db run reset",
+    "dev:api": "pnpm --filter @uc/api run dev",
+    "dev:worker": "pnpm --filter @uc/worker run dev",
+    "dev:merchant": "pnpm --filter @uc/merchant-admin run dev",
+    "dev:platform": "pnpm --filter @uc/platform-admin run dev",
+    "openapi:generate": "pnpm --filter @uc/api run openapi:generate",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r --workspace-concurrency=1 run test",
+    "test:e2e": "pnpm --filter @uc/e2e run e2e"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "typescript": "~5.7.3",
+    "typescript-eslint": "^8.19.0",
+    "@types/node": "^22.10.0",
+    "vitest": "^3.0.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@node-rs/argon2",
+      "@swc/core",
+      "esbuild",
+      "msgpackr-extract",
+      "sharp"
+    ],
+    "overrides": {
+      "postcss": ">=8.5.18",
+      "tinypool": ">=2.1.2"
+    }
+  }
+}

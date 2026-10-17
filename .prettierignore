@@ -1,0 +1,17 @@
+node_modules
+dist
+.next
+coverage
+pnpm-lock.yaml
+packages/db/migrations/meta
+playwright-report
+test-results
+specs
+prompts
+contracts
+qa
+CLAUDE.md
+README.md
+docs
+packages/db/migrations
+.github

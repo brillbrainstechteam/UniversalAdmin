@@ -1,0 +1,50 @@
+import type { Audience, FeatureKey, TenantPermission, PlatformPermission, PlatformRole } from '@uc/contracts';
+import type { Request } from 'express';
+
+export interface AuthState {
+  userId: string;
+  email: string;
+  displayName: string;
+  sessionId: string;
+  audience: Audience;
+  sessionExpiresAt: Date;
+}
+
+export interface TenantState {
+  tenantId: string;
+  membershipId: string;
+  permissions: ReadonlySet<TenantPermission>;
+  features: readonly FeatureKey[];
+  /** null = all locations */
+  locationScope: readonly string[] | null;
+  roleKeys: readonly string[];
+  isOwner: boolean;
+}
+
+export interface PlatformState {
+  role: PlatformRole;
+  permissions: ReadonlySet<PlatformPermission>;
+}
+
+export interface AppRequest extends Request {
+  correlationId: string;
+  auth?: AuthState;
+  tenant?: TenantState;
+  platform?: PlatformState;
+}
+
+/** Request metadata passed into services for audit/outbox. */
+export interface RequestMeta {
+  correlationId: string;
+  ip: string | null;
+  userAgent: string | null;
+}
+
+export function metaOf(req: AppRequest): RequestMeta {
+  const ua = req.headers['user-agent'];
+  return {
+    correlationId: req.correlationId,
+    ip: req.ip ?? null,
+    userAgent: typeof ua === 'string' ? ua.slice(0, 300) : null,
+  };
+}

@@ -1,0 +1,47 @@
+import { z } from './z';
+
+export const ErrorCodes = [
+  'VALIDATION_FAILED',
+  'UNAUTHENTICATED',
+  'INVALID_CREDENTIALS',
+  'ACCOUNT_LOCKED',
+  'ACCOUNT_DISABLED',
+  'SESSION_EXPIRED',
+  'CSRF_CHECK_FAILED',
+  'FORBIDDEN',
+  'PERMISSION_DENIED',
+  'TENANT_REQUIRED',
+  'TENANT_ACCESS_DENIED',
+  'TENANT_SUSPENDED',
+  'FEATURE_NOT_ENTITLED',
+  'NOT_FOUND',
+  'STOREFRONT_NOT_FOUND',
+  'CONFLICT',
+  'VERSION_CONFLICT',
+  'DUPLICATE',
+  'IDEMPOTENCY_KEY_REQUIRED',
+  'IDEMPOTENCY_KEY_REUSED',
+  'IDEMPOTENCY_IN_PROGRESS',
+  'INVITATION_INVALID',
+  'ALREADY_MEMBER',
+  'INVITATION_PENDING',
+  'LAST_OWNER',
+  'SELF_MODIFICATION',
+  'PRIVILEGE_ESCALATION',
+  'SYSTEM_ROLE_READONLY',
+  'LOCATION_OUT_OF_SCOPE',
+  'INVALID_STATE_TRANSITION',
+  'RATE_LIMITED',
+  'INTERNAL',
+] as const;
+export type ErrorCode = (typeof ErrorCodes)[number];
+
+export const ErrorBody = z
+  .object({
+    code: z.enum(ErrorCodes),
+    message: z.string(),
+    details: z.unknown().optional(),
+    correlationId: z.string(),
+  })
+  .openapi('Error');
+export type ErrorBody = z.infer<typeof ErrorBody>;

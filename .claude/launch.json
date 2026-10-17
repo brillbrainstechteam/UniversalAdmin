@@ -1,0 +1,8 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "api", "runtimeExecutable": "pnpm", "runtimeArgs": ["dev:api"], "port": 4100 },
+    { "name": "merchant-admin", "runtimeExecutable": "pnpm", "runtimeArgs": ["dev:merchant"], "port": 3100 },
+    { "name": "platform-admin", "runtimeExecutable": "pnpm", "runtimeArgs": ["dev:platform"], "port": 3101 }
+  ]
+}

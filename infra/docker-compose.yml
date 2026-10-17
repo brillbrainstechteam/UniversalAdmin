@@ -1,0 +1,40 @@
+# Local development / test infrastructure. Non-production credentials only.
+name: universal-commerce
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres_dev_only}
+      POSTGRES_DB: postgres
+    ports: ['5440:5432']
+    volumes:
+      - uc_pg:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d uc_dev']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports: ['6390:6379']
+    volumes: [uc_redis:/data]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  # S3-compatible object storage (used from Phase 02). Opt-in: docker compose --profile storage up -d
+  # MinIO images are no longer publicly pullable (see DECISIONS ADR-012), SeaweedFS provides the S3 API.
+  objectstore:
+    image: chrislusf/seaweedfs:3.80
+    profiles: [storage]
+    command: ['server', '-s3', '-s3.port=8333', '-dir=/data']
+    ports: ['9010:8333']
+    volumes: [uc_objects:/data]
+volumes:
+  uc_pg:
+  uc_redis:
+  uc_objects:

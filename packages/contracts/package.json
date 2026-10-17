@@ -1,0 +1,20 @@
+{
+  "name": "@uc/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@uc/config": "workspace:*",
+    "vitest": "^3.0.5"
+  }
+}
