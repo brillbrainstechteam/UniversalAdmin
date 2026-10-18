@@ -37,6 +37,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { serverErrors, validate } from '../../../../../lib/forms';
 import { useTenant, useTenantQuery } from '../../../../../lib/tenant';
+import { JewelleryCard } from './jewellery';
 
 type Setter = (p: Product) => void;
 
@@ -727,6 +728,7 @@ export default function ProductPage() {
           ]}
         />
       </Card>
+      <JewelleryCard product={p} />
       <MediaCard product={p} set={set} readOnly={readOnly} />
       <Card title="Sales channels">
         <span className="uc-muted">

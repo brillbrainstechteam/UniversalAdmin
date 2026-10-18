@@ -18,6 +18,7 @@ export const TENANT_PERMISSIONS = {
   'catalog.edit': { group: 'Catalog', label: 'Edit products (non-ERP-owned fields)', phase: 2 },
   'catalog.publish': { group: 'Catalog', label: 'Publish products to channels', phase: 2 },
   'jewellery.edit': { group: 'Catalog', label: 'Edit jewellery measurements and serial items', phase: 3 },
+  'jewellery.review': { group: 'Catalog', label: 'Review weight exceptions and correct HUIDs (maker-checker)', phase: 3 },
   'inventory.read': { group: 'Inventory', label: 'View stock', phase: 4 },
   'inventory.adjust': { group: 'Inventory', label: 'Adjust stock with reason', phase: 4 },
   'inventory.transfer': { group: 'Inventory', label: 'Transfer stock between locations', phase: 4 },
@@ -76,7 +77,7 @@ export const SYSTEM_ROLES: Record<string, { name: string; description: string; p
     inventory_operator: {
       name: 'Inventory operator',
       description: 'Validated stock adjustments within assigned locations',
-      permissions: ['inventory.read', 'inventory.adjust', 'inventory.transfer', 'locations.read', 'catalog.read'],
+      permissions: ['inventory.read', 'inventory.adjust', 'inventory.transfer', 'locations.read', 'catalog.read', 'jewellery.edit'],
     },
     rate_editor: {
       name: 'Rate editor',

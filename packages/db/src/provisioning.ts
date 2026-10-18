@@ -1,6 +1,13 @@
-import { PRESET_DEFAULT_CHANNELS, SYSTEM_ROLES, type PresetKey, type ThemeTokens } from '@uc/contracts';
+import {
+  DEFAULT_PURITIES,
+  PRESET_DEFAULT_CHANNELS,
+  SYSTEM_ROLES,
+  type PresetKey,
+  type ThemeTokens,
+} from '@uc/contracts';
 import { eq } from 'drizzle-orm';
 import type { Tx } from './client';
+import { jewellerySettings, purityDefinitions } from './jewellery-schema';
 import { channels, locations, roles, stores, tenants } from './schema';
 
 export interface ProvisionTenantInput {
@@ -137,6 +144,15 @@ export async function provisionTenantRecords(
       })),
     )
     .returning();
+
+  // Jewellery reference data (harmless for general tenants; features gate its use). Platform defaults must be
+  // confirmed by the merchant before computed fine weights are relied on.
+  await tx.insert(jewellerySettings).values({ tenantId: tenant.id });
+  await tx
+    .insert(purityDefinitions)
+    .values(
+      DEFAULT_PURITIES.map((p) => ({ tenantId: tenant.id, ...p, source: 'platform_default' as const })),
+    );
 
   const [active] = await tx
     .update(tenants)

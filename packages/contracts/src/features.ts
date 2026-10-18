@@ -1,7 +1,7 @@
 import type { TenantPermission } from './permissions';
 
 /** Platform phase whose modules are live in this build. Nav never shows modules from later phases. */
-export const IMPLEMENTED_PHASE = 2;
+export const IMPLEMENTED_PHASE = 3;
 
 export const FEATURES = {
   catalog: { label: 'Catalog', description: 'Products, variants, categories, collections' },
@@ -109,6 +109,7 @@ export const NAV_REGISTRY: NavDefinition[] = [
   { key: 'products', label: 'Products', path: '/products', section: 'main', anyPermission: ['catalog.read'], feature: 'catalog', phase: 2 },
   { key: 'collections', label: 'Collections', path: '/collections', section: 'main', anyPermission: ['catalog.read'], feature: 'catalog', phase: 2 },
   { key: 'categories', label: 'Categories', path: '/categories', section: 'main', anyPermission: ['catalog.read'], feature: 'catalog', phase: 2 },
+  { key: 'serial-items', label: 'Serialized items', path: '/serial-items', section: 'main', anyPermission: ['catalog.read'], feature: 'serialized_items', phase: 3 },
   { key: 'inventory', label: 'Inventory', path: '/inventory', section: 'main', anyPermission: ['inventory.read'], feature: 'inventory', phase: 4 },
   { key: 'companies', label: 'Companies', path: '/companies', section: 'main', anyPermission: ['companies.read'], feature: 'b2b_companies', phase: 8 },
   { key: 'customers', label: 'Customers', path: '/customers', section: 'main', anyPermission: ['customers.read'], feature: 'customers', phase: 9 },
@@ -124,6 +125,7 @@ export const NAV_REGISTRY: NavDefinition[] = [
   { key: 'settings-stores', label: 'Stores & channels', path: '/settings/stores', section: 'settings', anyPermission: ['stores.read'], phase: 1 },
   { key: 'settings-locations', label: 'Locations', path: '/settings/locations', section: 'settings', anyPermission: ['locations.read'], phase: 1 },
   { key: 'settings-attributes', label: 'Product attributes', path: '/settings/attributes', section: 'settings', anyPermission: ['catalog.read'], feature: 'catalog', phase: 2 },
+  { key: 'settings-jewellery', label: 'Jewellery', path: '/settings/jewellery', section: 'settings', anyPermission: ['catalog.read'], feature: 'jewellery', phase: 3 },
   { key: 'settings-staff', label: 'Staff', path: '/settings/staff', section: 'settings', anyPermission: ['staff.read'], phase: 1 },
   { key: 'settings-roles', label: 'Roles', path: '/settings/roles', section: 'settings', anyPermission: ['roles.read'], phase: 1 },
 ];

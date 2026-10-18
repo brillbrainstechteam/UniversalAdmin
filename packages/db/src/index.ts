@@ -1,5 +1,6 @@
 export * from './schema';
 export * from './catalog-schema';
+export * from './jewellery-schema';
 export * from './client';
 export * from './audit';
 export * from './outbox';

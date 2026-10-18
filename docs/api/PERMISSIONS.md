@@ -52,3 +52,17 @@ per endpoint (contract requirement) are not yet written — tracked as a Phase 0
 | GET/POST/PATCH/DELETE /v1/admin/saved-views | catalog.read | private unless shared; only owner may change | — |
 | GET/POST /v1/admin/catalog/imports, GET {id}, POST {id}/commit, {id}/discard | catalog.edit | **Idempotency-Key** on upload; ≤1000 rows; commit once, re-validated | catalog.import_previewed / committed / discarded |
 | GET /v1/storefront/catalog/*, /v1/storefront/media/{id} | public (domain-resolved) | active + published + ≥1 active variant; no internal ids, no prices | — |
+
+## Phase 03 — jewellery
+
+| Endpoint | Permission | Notes / guards | Audit action |
+|---|---|---|---|
+| GET /v1/admin/jewellery/settings, /purities | catalog.read | feature `jewellery` | — |
+| PUT /v1/admin/jewellery/settings; POST/PATCH /v1/admin/jewellery/purities | jewellery.edit | `version`; fineness 0 < f ≤ 1; saving a fineness confirms it | jewellery.settings_updated, jewellery.purity_created / updated / confirmed |
+| GET/PUT /v1/admin/products/{id}/variants/{variantId}/jewellery-spec | catalog.read / jewellery.edit | jewellery products only; units g/mg/kg (ct for stones); `version` to replace | jewellery_spec.created / updated |
+| GET /v1/admin/serial-items[/{id}] | catalog.read | feature `serialized_items` | — |
+| POST /v1/admin/serial-items, /bulk | jewellery.edit | HUID/tag unique per tenant; net > gross needs a reason → pending_review; bulk ≤ 200, atomic, `dryRun` | serial_item.created / bulk_created |
+| PATCH /v1/admin/serial-items/{id} | jewellery.edit (+ jewellery.review to change an assigned HUID) | reason required for measurement/HUID changes on active items; retired = read-only | serial_item.updated / measurements_corrected / huid_corrected / retired |
+| POST /v1/admin/serial-items/{id}/review | jewellery.review | reviewer ≠ creator/last editor (`SEPARATION_OF_DUTIES`) | serial_item.exception_approved / rejected |
+
+System roles: owner/admin gain `jewellery.review`; inventory operator gains `jewellery.edit` (data migration 0006 for existing tenants).

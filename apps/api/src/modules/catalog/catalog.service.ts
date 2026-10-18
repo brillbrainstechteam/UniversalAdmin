@@ -43,6 +43,7 @@ import { iso, likePattern } from '../../common/mappers';
 import type { AuthState, RequestMeta, TenantState } from '../../common/request';
 import { StorageService } from '../../common/storage.service';
 import { DbService } from '../../db/db.service';
+import { loadProductJewellery } from '../jewellery/jewellery.service';
 import { assertTransition, checkVariantOptions } from './catalog-rules';
 
 type ProductRow = typeof products.$inferSelect;
@@ -213,6 +214,7 @@ export class CatalogService {
         version: pub?.version ?? 0,
       })),
       collectionIds: coll.map((c) => c.id),
+      jewellery: await loadProductJewellery(tx, ctx, p.id, p.productType),
       version: p.version,
       createdAt: iso(p.createdAt),
       updatedAt: iso(p.updatedAt),

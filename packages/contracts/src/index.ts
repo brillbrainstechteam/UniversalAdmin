@@ -9,4 +9,6 @@ export * from './dto/tenant';
 export * from './dto/admin';
 export * from './dto/storefront';
 export * from './dto/catalog';
+export * from './dto/jewellery';
+export * from './jewellery-math';
 export * from './openapi';

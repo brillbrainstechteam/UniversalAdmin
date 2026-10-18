@@ -4,7 +4,7 @@
 |---|---|---|---|
 | 01 FOUNDATION | approved, pushed (c52825f) | approved | 144 unit/integration + 9 E2E passing; see [phase-01-FOUNDATION.md](phase-01-FOUNDATION.md#results-2026-10-17--status-implemented-awaiting-review) |
 | 02 CATALOG | approved, pushed (c336aee) | approved | 171 unit/integration + 13 E2E passing; see [phase-02-CATALOG.md](phase-02-CATALOG.md) |
-| 03 JEWELLERY | not started | — | |
+| 03 JEWELLERY | approved | approved | 211 unit/integration + 16 E2E passing; see [phase-03-JEWELLERY.md](phase-03-JEWELLERY.md) |
 | 04 INVENTORY | not started | — | |
 | 05 CONNECTORS | not started | — | |
 | 06 PRICING | not started | — | |
@@ -22,3 +22,4 @@
 - 2026-10-17 — **Phase 02 CHECKPOINT (in progress, stopped on usage limit).** Done: plan `phase-02-CATALOG.md`; catalog schema `packages/db/src/catalog-schema.ts`; migrations 0002 (pg_trgm), 0003 (catalog tables), 0004 (catalog RLS), applied to uc_dev; contracts `dto/catalog.ts`, nav entries (IMPLEMENTED_PHASE=2), `ProductUnpublished` event, media error codes, 37 catalog/storefront routes registered in OpenAPI; API config S3_* vars; `@aws-sdk/client-s3` added; SeaweedFS started by `pnpm infra:up`.
   Next: (1) API: S3 media storage + magic-byte sniffing, catalog/taxonomy/saved-view/import/storefront services + controllers (routes must match `API_ROUTES`, or openapi.spec fails); TenantGuard `?tenantId=` for GET media content. (2) Update `packages/db/test/migrations.spec.ts` table list + RLS list to include `CATALOG_RLS_TABLES`. (3) Merchant UI pages for the new nav entries (Products, Collections, Categories, Product attributes) — nav now shows them, so until built they are dead links. (4) Tests C-01…C-12, `pnpm openapi:generate`, full gate run, docs. Nothing from Phase 02 is committed.
 - 2026-10-18 — Phase 02 implemented. format/lint/typecheck/build/test (171)/e2e (13)/audit all exit 0. 4 defects found by tests and fixed (incl. a Phase 01 500 on malformed JSON). Not committed. Stopped for review before Phase 03.
+- 2026-10-18 — Phase 03 implemented. format/lint/typecheck/build/test (211)/e2e (16)/audit all exit 0. 3 defects found and fixed. Not committed. Stopped for review before Phase 04.

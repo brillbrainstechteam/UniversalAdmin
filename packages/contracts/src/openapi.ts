@@ -7,6 +7,7 @@ import * as T from './dto/tenant';
 import * as M from './dto/admin';
 import * as S from './dto/storefront';
 import * as C from './dto/catalog';
+import * as J from './dto/jewellery';
 
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 type Scope = 'auth' | 'admin' | 'platform' | 'storefront' | 'system';
@@ -127,8 +128,21 @@ export const API_ROUTES: ApiRouteDoc[] = [
   { method: 'get', path: '/v1/storefront/catalog/categories', scope: 'storefront', summary: 'Categories', response: C.StorefrontCategoryList, errors: [404] },
   { method: 'get', path: '/v1/storefront/catalog/collections/{slug}', scope: 'storefront', summary: 'Active collection', params: C.SlugParam, response: C.StorefrontCollection, errors: [404] },
   { method: 'get', path: '/v1/storefront/media/{id}', scope: 'storefront', summary: 'Image of a product published to this channel', params: IdParam, binary: true, errors: [404] },
+  // ---- Phase 03: jewellery ----
+  { method: 'get', path: '/v1/admin/jewellery/settings', scope: 'admin', permission: 'catalog.read', summary: 'Jewellery settings (tolerance, fine rounding, HUID format)', response: J.JewellerySettings },
+  { method: 'put', path: '/v1/admin/jewellery/settings', scope: 'admin', permission: 'jewellery.edit', summary: 'Update jewellery settings', body: J.UpdateJewellerySettingsRequest, response: J.JewellerySettings, errors: [400, 409] },
+  { method: 'get', path: '/v1/admin/jewellery/purities', scope: 'admin', permission: 'catalog.read', summary: 'Purity definitions (metal, code, fineness)', response: J.PurityList },
+  { method: 'post', path: '/v1/admin/jewellery/purities', scope: 'admin', permission: 'jewellery.edit', summary: 'Create purity definition', body: J.CreatePurityRequest, response: J.PurityDefinition, status: 201, errors: [400, 409] },
+  { method: 'patch', path: '/v1/admin/jewellery/purities/{id}', scope: 'admin', permission: 'jewellery.edit', summary: 'Update/confirm purity (affects future computations only)', params: IdParam, body: J.UpdatePurityRequest, response: J.PurityDefinition, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/products/{id}/variants/{variantId}/jewellery-spec', scope: 'admin', permission: 'catalog.read', summary: 'Variant jewellery spec (design measurements)', params: J.VariantParams, response: J.JewellerySpec, errors: [404] },
+  { method: 'put', path: '/v1/admin/products/{id}/variants/{variantId}/jewellery-spec', scope: 'admin', permission: 'jewellery.edit', summary: 'Create/replace variant jewellery spec', params: J.VariantParams, body: J.PutJewellerySpecRequest, response: J.JewellerySpec, errors: [400, 403, 404, 409] },
+  { method: 'get', path: '/v1/admin/serial-items', scope: 'admin', permission: 'catalog.read', summary: 'Search serialized items (tag, HUID, SKU)', query: J.SerialItemListQuery, response: J.SerialItemPage },
+  { method: 'post', path: '/v1/admin/serial-items', scope: 'admin', permission: 'jewellery.edit', summary: 'Create one serialized item with actual measurements', body: J.CreateSerialItemRequest, response: J.SerialItem, status: 201, errors: [400, 403, 404, 409] },
+  { method: 'post', path: '/v1/admin/serial-items/bulk', scope: 'admin', permission: 'jewellery.edit', summary: 'Bulk add items for a variant (atomic; dryRun previews)', body: J.BulkSerialItemsRequest, response: J.BulkSerialItemsResponse, errors: [400, 403, 404, 409] },
+  { method: 'get', path: '/v1/admin/serial-items/{id}', scope: 'admin', permission: 'catalog.read', summary: 'Serialized item detail', params: IdParam, response: J.SerialItem, errors: [404] },
+  { method: 'patch', path: '/v1/admin/serial-items/{id}', scope: 'admin', permission: 'jewellery.edit', summary: 'Update item (edit policy: reasons, HUID restrictions, retired read-only)', params: IdParam, body: J.UpdateSerialItemRequest, response: J.SerialItem, errors: [400, 403, 404, 409] },
+  { method: 'post', path: '/v1/admin/serial-items/{id}/review', scope: 'admin', permission: 'jewellery.review', summary: 'Approve/reject a weight exception (reviewer ≠ editor)', params: IdParam, body: J.ReviewSerialItemRequest, response: J.SerialItem, errors: [400, 403, 404, 409] },
 ];
-
 const SECURITY: Record<Scope, RouteConfig['security']> = {
   auth: [],
   system: [],
@@ -193,7 +207,7 @@ export function buildOpenApiDocument(
     openapi: '3.1.0',
     info: {
       title: 'Universal Commerce OS API',
-      version: '1.0.0-phase02',
+      version: '1.0.0-phase03',
       description:
         'Multi-tenant commerce platform API. Errors use {code,message,details,correlationId}. Decimals are strings; money is {amountMinor,currency}.',
     },

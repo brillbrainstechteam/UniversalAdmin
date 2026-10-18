@@ -83,6 +83,16 @@ Safe defaults were chosen where the specs are ambiguous; items marked **Proposed
 - CSV import is a merchant catalog import (not a connector). Group atomicity: a product with any invalid row is skipped entirely; commit re-validates and refuses (409) if results differ from the preview; one transaction; at most once.
 - Prices and stock are deliberately absent from catalog APIs until Phases 06/04.
 
+## ADR-017 Jewellery measurements — Accepted (Phase 03)
+- Canonical unit is the gram, `NUMERIC(20,6)`; arithmetic uses `decimal.js` (resolves OD-2) via `@uc/contracts/jewellery-math`. An ESLint rule bans `Number()`/`parseFloat`/unary `+` in measurement code.
+- Accepted input units: g, mg, kg; ct (exactly 0.2 g) only for stones/components. Regional units such as tola are **not** accepted (ambiguous definitions; specs/04 "reject ambiguous units"). Input that would exceed 6 dp after conversion is rejected, never rounded.
+- Raw input (`{value, unit}`) is stored next to canonical grams on specs, items and components; corrections keep the previous canonical values in `raw.previous`.
+- Fine weight = Σ(metal component g × fineness) for multi-metal pieces, else net × fineness; rounded once, half-up, to the tenant's fine scale (default 3 dp); formula id and inputs are stored. Entered fine weights are allowed and cross-checked.
+- Gross is never derived from net + stone; inconsistencies are **warnings** (other materials exist). Net > gross is blocked unless a reason is recorded, which puts the item into `pending_review` for a different user with `jewellery.review` (maker-checker).
+- Purity fineness values are merchant configuration. Platform defaults (24K/22K/18K/14K, 999/925 silver, 950 platinum) are flagged unconfirmed until the merchant confirms them; changing a fineness never rewrites stored fine weights.
+- HUID: optional, upper-cased, unique per tenant (not globally — an article can legitimately move between merchants on the platform). Format check is a tenant setting (BIS-style 6 alphanumerics by default, or free text) pending regulatory validation.
+- Per-article availability/location/reservation is Phase 04; storefronts expose only design specs until then.
+
 ## ADR-016 Generative AI usage — Proposed (no AI in the product today)
 - Nothing in the specs requires an LLM, and specs/00 puts "AI-autonomous financial approval" out of scope. **No OpenAI (or other LLM) integration exists or is planned in Phases 01–12 by default.**
 - If wanted later, only as an optional, tenant-entitled, human-reviewed assistant behind an adapter interface (provider-agnostic, keys in a secret store, prompts/outputs audited, no customer PII sent without consent), for content tasks such as: product description/SEO drafts, image alt-text suggestions, CSV/ERP column-mapping suggestions (Phase 05). Never for prices, metal rates, tax/GST/HSN, stock, approvals, or anything financial/legal.

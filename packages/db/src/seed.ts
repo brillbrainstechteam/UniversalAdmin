@@ -5,6 +5,7 @@ import { writeAudit } from './audit';
 import { hashPassword } from './crypto';
 import { provisionTenantRecords, type ProvisionTenantInput } from './provisioning';
 import { DEMO_CATALOG, seedDemoCatalog } from './seed-catalog';
+import { DEMO_JEWELLERY, seedDemoJewellery } from './seed-jewellery';
 import {
   channelDomains,
   channels,
@@ -233,6 +234,10 @@ export async function seedDemo(db: Db, password: string): Promise<SeedResult> {
     for (const [key, p] of Object.entries({ aurum, lumiere, northwind })) {
       const demo = DEMO_CATALOG[key as keyof typeof DEMO_CATALOG];
       await seedDemoCatalog(tx, p.tenant.id, p.channelIds[0]!, demo.categories, demo.items);
+    }
+    for (const [key, p] of Object.entries({ aurum, lumiere })) {
+      const j = DEMO_JEWELLERY[key as keyof typeof DEMO_JEWELLERY];
+      await seedDemoJewellery(tx, p.tenant.id, j.specs, j.items);
     }
 
     return {

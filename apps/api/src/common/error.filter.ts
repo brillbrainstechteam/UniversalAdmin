@@ -24,6 +24,9 @@ const UNIQUE_FIELDS: Record<string, string> = {
   collections_tenant_slug_uq: 'slug',
   attribute_definitions_tenant_key_uq: 'key',
   saved_views_owner_name_uq: 'name',
+  serial_items_tenant_tag_uq: 'serialTag',
+  serial_items_tenant_huid_uq: 'huid',
+  purity_definitions_tenant_code_uq: 'code',
 };
 
 interface PgError {

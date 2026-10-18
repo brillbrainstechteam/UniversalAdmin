@@ -1,5 +1,6 @@
 import { DecimalString, PageQuery, Timestamp, Uuid, Version, pageOf } from '../common';
 import { z } from '../z';
+import { ProductJewellery, StorefrontJewellery } from './jewellery';
 
 // ---------------------------------------------------------------- primitives
 
@@ -162,6 +163,8 @@ export const Product = z
     media: z.array(ProductMedia),
     publications: z.array(Publication),
     collectionIds: z.array(Uuid),
+    /** Present for jewellery products: per-variant specs and serial item counts. */
+    jewellery: ProductJewellery.nullable(),
     version: Version,
     createdAt: Timestamp,
     updatedAt: Timestamp,
@@ -581,7 +584,14 @@ export const StorefrontProduct = z
     attributes: AttributeValues,
     seo: z.object({ title: z.string(), description: z.string().nullable() }),
     images: z.array(StorefrontImage),
-    variants: z.array(z.object({ sku: z.string(), title: z.string(), optionValues: z.record(z.string()) })),
+    variants: z.array(
+      z.object({
+        sku: z.string(),
+        title: z.string(),
+        optionValues: z.record(z.string()),
+        jewellery: StorefrontJewellery.nullable(),
+      }),
+    ),
   })
   .openapi('StorefrontProduct');
 export type StorefrontProduct = z.infer<typeof StorefrontProduct>;

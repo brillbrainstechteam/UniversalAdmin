@@ -14,13 +14,15 @@ import {
   channelPublications,
   collectionProducts,
   collections,
+  jewellerySpecs,
+  purityDefinitions,
   mediaAssets,
   productMedia,
   products,
   variants,
   type Tx,
 } from '@uc/db';
-import { and, asc, eq, gt, ilike, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, gt, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { Response } from 'express';
 import { decodeCursor, paginate } from '../../common/cursor';
 import { AppError } from '../../common/errors';
@@ -157,6 +159,20 @@ export class StorefrontCatalogService {
         .from(variants)
         .where(and(eq(variants.productId, p.id), eq(variants.status, 'active')))
         .orderBy(asc(variants.position));
+      // Design specs only (nominal weights). Per-article actual weights need availability (Phases 04/09).
+      const specs = vs.length
+        ? await tx
+            .select({ spec: jewellerySpecs, purity: purityDefinitions.label })
+            .from(jewellerySpecs)
+            .innerJoin(purityDefinitions, eq(purityDefinitions.id, jewellerySpecs.purityId))
+            .where(
+              inArray(
+                jewellerySpecs.variantId,
+                vs.map((v) => v.id),
+              ),
+            )
+        : [];
+      const specFor = new Map(specs.map((s) => [s.spec.variantId, s]));
       return {
         slug: p.slug,
         title: p.title,
@@ -173,6 +189,21 @@ export class StorefrontCatalogService {
           sku: v.sku,
           title: v.title,
           optionValues: v.optionValues as Record<string, string>,
+          jewellery: (() => {
+            const s = p.productType === 'jewellery' ? specFor.get(v.id) : undefined;
+            return s
+              ? {
+                  metal: s.spec.metal,
+                  purity: s.purity,
+                  colour: s.spec.colour,
+                  grossG: s.spec.grossG,
+                  netG: s.spec.netG,
+                  stoneG: s.spec.stoneG,
+                  qtyUnit: s.spec.qtyUnit,
+                  piecesPerUnit: s.spec.piecesPerUnit,
+                }
+              : null;
+          })(),
         })),
       };
     });

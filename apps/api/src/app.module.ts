@@ -14,6 +14,9 @@ import {
 import { AuditQueryService } from './modules/audit/audit-query.service';
 import { StorageService } from './common/storage.service';
 import { CatalogController } from './modules/catalog/catalog.controller';
+import { JewelleryController } from './modules/jewellery/jewellery.controller';
+import { JewelleryService } from './modules/jewellery/jewellery.service';
+import { SerialItemsService } from './modules/jewellery/serial-items.service';
 import { CatalogService } from './modules/catalog/catalog.service';
 import { ImportService } from './modules/catalog/import.service';
 import { SavedViewsService } from './modules/catalog/saved-views.service';
@@ -61,6 +64,7 @@ export class AppModule {
         CatalogController,
         TaxonomyController,
         StorefrontCatalogController,
+        JewelleryController,
       ],
       providers: [
         { provide: APP_GUARD, useClass: CsrfGuard },
@@ -85,6 +89,8 @@ export class AppModule {
         SavedViewsService,
         ImportService,
         StorefrontCatalogService,
+        JewelleryService,
+        SerialItemsService,
       ],
     };
   }

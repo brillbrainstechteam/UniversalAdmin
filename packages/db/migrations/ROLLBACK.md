@@ -10,3 +10,5 @@ Drizzle migrations are forward-only. Roll back by applying the inverse SQL below
 | 0002_extensions | `DROP EXTENSION pg_trgm;` only after 0003 is rolled back (indexes depend on it). |
 | 0003_catalog | Destructive: drop tables `catalog_import_batches, saved_views, channel_publications, product_media, media_assets, collection_products, collections, variants, products, attribute_definitions, categories` (in that order). Export catalog data first; object-storage media must be removed separately. |
 | 0004_catalog_security | Per catalog table: `DROP POLICY <t>_tenant_isolation ON <t>; ALTER TABLE <t> DISABLE ROW LEVEL SECURITY;` |
+| 0005_jewellery | Destructive: drop `jewellery_components, serial_items, jewellery_specs, purity_definitions, jewellery_settings` (in that order). Export measurement data first. |
+| 0006_jewellery_security | Per jewellery table drop policy + disable RLS; remove `jewellery.review` from owner/admin and `jewellery.edit` from inventory_operator system roles (`array_remove`). Default purities/settings rows may stay. |

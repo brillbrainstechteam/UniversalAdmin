@@ -34,6 +34,7 @@ export const ErrorCodes = [
   'RATE_LIMITED',
   'UNSUPPORTED_MEDIA_TYPE',
   'PAYLOAD_TOO_LARGE',
+  'SEPARATION_OF_DUTIES',
   'INTERNAL',
 ] as const;
 export type ErrorCode = (typeof ErrorCodes)[number];

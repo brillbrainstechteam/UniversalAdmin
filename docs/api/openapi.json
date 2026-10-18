@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Universal Commerce OS API",
-    "version": "1.0.0-phase02",
+    "version": "1.0.0-phase03",
     "description": "Multi-tenant commerce platform API. Errors use {code,message,details,correlationId}. Decimals are strings; money is {amountMinor,currency}."
   },
   "servers": [
@@ -69,6 +69,7 @@
               "RATE_LIMITED",
               "UNSUPPORTED_MEDIA_TYPE",
               "PAYLOAD_TOO_LARGE",
+              "SEPARATION_OF_DUTIES",
               "INTERNAL"
             ]
           },
@@ -2997,6 +2998,322 @@
           "version"
         ]
       },
+      "JewelleryComponent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "diamond",
+              "gemstone",
+              "pearl",
+              "metal",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "shape": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "grade": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "count": {
+            "type": "integer"
+          },
+          "weightG": {
+            "type": "string",
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "caratWeight": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "purity": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "code": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "fineness": {
+                "type": "string"
+              },
+              "confirmed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "code",
+              "label",
+              "fineness",
+              "confirmed"
+            ]
+          },
+          "certificate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "raw": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "description",
+          "shape",
+          "grade",
+          "count",
+          "weightG",
+          "caratWeight",
+          "purity",
+          "certificate",
+          "raw"
+        ]
+      },
+      "MeasurementCheck": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "GROSS_MISMATCH",
+              "STONE_COMPONENT_MISMATCH",
+              "FINE_DEVIATION",
+              "PURITY_UNCONFIRMED",
+              "NET_EXCEEDS_GROSS"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "warning",
+              "info"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message"
+        ]
+      },
+      "JewellerySpec": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "variantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metal": {
+            "type": "string",
+            "enum": [
+              "gold",
+              "silver",
+              "platinum",
+              "palladium",
+              "other"
+            ]
+          },
+          "purity": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "code": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "fineness": {
+                "type": "string"
+              },
+              "confirmed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "code",
+              "label",
+              "fineness",
+              "confirmed"
+            ]
+          },
+          "colour": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "grossG": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "netG": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "stoneG": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "fineG": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "fineSource": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "computed",
+              "entered"
+            ]
+          },
+          "billingBasis": {
+            "type": "string",
+            "enum": [
+              "gross",
+              "net",
+              "fine",
+              "piece"
+            ]
+          },
+          "qtyUnit": {
+            "type": "string",
+            "enum": [
+              "piece",
+              "pair",
+              "set"
+            ]
+          },
+          "piecesPerUnit": {
+            "type": "integer"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JewelleryComponent"
+            }
+          },
+          "raw": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeasurementCheck"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          }
+        },
+        "required": [
+          "id",
+          "variantId",
+          "metal",
+          "purity",
+          "colour",
+          "grossG",
+          "netG",
+          "stoneG",
+          "fineG",
+          "fineSource",
+          "billingBasis",
+          "qtyUnit",
+          "piecesPerUnit",
+          "components",
+          "raw",
+          "checks",
+          "version",
+          "updatedAt"
+        ]
+      },
+      "ProductJewellery": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "specs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JewellerySpec"
+            }
+          },
+          "serialItemCounts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "specs",
+          "serialItemCounts"
+        ]
+      },
       "Product": {
         "type": "object",
         "properties": {
@@ -3113,6 +3430,9 @@
               "format": "uuid"
             }
           },
+          "jewellery": {
+            "$ref": "#/components/schemas/ProductJewellery"
+          },
           "version": {
             "type": "integer",
             "minimum": 0,
@@ -3146,6 +3466,7 @@
           "media",
           "publications",
           "collectionIds",
+          "jewellery",
           "version",
           "createdAt",
           "updatedAt"
@@ -4617,6 +4938,75 @@
           "nextCursor"
         ]
       },
+      "StorefrontJewellery": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "metal": {
+            "type": "string",
+            "enum": [
+              "gold",
+              "silver",
+              "platinum",
+              "palladium",
+              "other"
+            ]
+          },
+          "purity": {
+            "type": "string"
+          },
+          "colour": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "grossG": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "netG": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "stoneG": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "qtyUnit": {
+            "type": "string",
+            "enum": [
+              "piece",
+              "pair",
+              "set"
+            ]
+          },
+          "piecesPerUnit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "metal",
+          "purity",
+          "colour",
+          "grossG",
+          "netG",
+          "stoneG",
+          "qtyUnit",
+          "piecesPerUnit"
+        ]
+      },
       "StorefrontProduct": {
         "type": "object",
         "properties": {
@@ -4733,12 +5123,16 @@
                   "additionalProperties": {
                     "type": "string"
                   }
+                },
+                "jewellery": {
+                  "$ref": "#/components/schemas/StorefrontJewellery"
                 }
               },
               "required": [
                 "sku",
                 "title",
-                "optionValues"
+                "optionValues",
+                "jewellery"
               ]
             }
           }
@@ -4808,6 +5202,1250 @@
           "slug",
           "title",
           "description"
+        ]
+      },
+      "JewellerySettings": {
+        "type": "object",
+        "properties": {
+          "weightToleranceG": {
+            "type": "string",
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "fineScale": {
+            "type": "integer"
+          },
+          "huidFormat": {
+            "type": "string",
+            "enum": [
+              "bis_6_alnum",
+              "free_text"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          }
+        },
+        "required": [
+          "weightToleranceG",
+          "fineScale",
+          "huidFormat",
+          "version",
+          "updatedAt"
+        ]
+      },
+      "UpdateJewellerySettingsRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "weightToleranceG": {
+            "type": "string",
+            "pattern": "^-?\\d{1,14}(\\.\\d{1,6})?$"
+          },
+          "fineScale": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 6
+          },
+          "huidFormat": {
+            "type": "string",
+            "enum": [
+              "bis_6_alnum",
+              "free_text"
+            ]
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "PurityDefinition": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metal": {
+            "type": "string",
+            "enum": [
+              "gold",
+              "silver",
+              "platinum",
+              "palladium",
+              "other"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "fineness": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "platform_default",
+              "merchant"
+            ]
+          },
+          "confirmedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          }
+        },
+        "required": [
+          "id",
+          "metal",
+          "code",
+          "label",
+          "fineness",
+          "status",
+          "source",
+          "confirmedAt",
+          "version",
+          "updatedAt"
+        ]
+      },
+      "PurityList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurityDefinition"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CreatePurityRequest": {
+        "type": "object",
+        "properties": {
+          "metal": {
+            "type": "string",
+            "enum": [
+              "gold",
+              "silver",
+              "platinum",
+              "palladium",
+              "other"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20,
+            "pattern": "^[A-Za-z0-9.]+$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "fineness": {
+            "type": "string",
+            "pattern": "^(0\\.\\d{1,6}|1(\\.0{1,6})?)$"
+          }
+        },
+        "required": [
+          "metal",
+          "code",
+          "label",
+          "fineness"
+        ]
+      },
+      "UpdatePurityRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "fineness": {
+            "type": "string",
+            "pattern": "^(0\\.\\d{1,6}|1(\\.0{1,6})?)$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ]
+          },
+          "confirm": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "WeightInput": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "pattern": "^\\d{1,14}(\\.\\d{1,6})?$"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "g",
+              "mg",
+              "kg",
+              "ct"
+            ],
+            "default": "g"
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
+      "ComponentInput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "diamond",
+              "gemstone",
+              "pearl",
+              "metal",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 200,
+            "default": ""
+          },
+          "shape": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 40
+          },
+          "grade": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 60
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000,
+            "default": 1
+          },
+          "weight": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightInput"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "purityId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "certificate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "kind",
+          "weight"
+        ]
+      },
+      "PutJewellerySpecRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "purityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "colour": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 40
+          },
+          "gross": {
+            "$ref": "#/components/schemas/WeightInput"
+          },
+          "net": {
+            "$ref": "#/components/schemas/WeightInput"
+          },
+          "stone": {
+            "$ref": "#/components/schemas/WeightInput"
+          },
+          "fine": {
+            "$ref": "#/components/schemas/WeightInput"
+          },
+          "billingBasis": {
+            "type": "string",
+            "enum": [
+              "gross",
+              "net",
+              "fine",
+              "piece"
+            ]
+          },
+          "qtyUnit": {
+            "type": "string",
+            "enum": [
+              "piece",
+              "pair",
+              "set"
+            ],
+            "default": "piece"
+          },
+          "piecesPerUnit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 1
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComponentInput"
+            },
+            "maxItems": 50,
+            "default": []
+          }
+        },
+        "required": [
+          "purityId",
+          "billingBasis"
+        ]
+      },
+      "Certificate": {
+        "type": "object",
+        "properties": {
+          "lab": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "number": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "issuedOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
+        },
+        "required": [
+          "lab",
+          "number"
+        ]
+      },
+      "SerialItemPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "variantId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "productId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "productTitle": {
+                  "type": "string"
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "serialTag": {
+                  "type": "string"
+                },
+                "huid": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "metal": {
+                  "type": "string",
+                  "enum": [
+                    "gold",
+                    "silver",
+                    "platinum",
+                    "palladium",
+                    "other"
+                  ]
+                },
+                "purity": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "fineness": {
+                      "type": "string"
+                    },
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "code",
+                    "label",
+                    "fineness",
+                    "confirmed"
+                  ]
+                },
+                "grossG": {
+                  "type": "string",
+                  "description": "Canonical grams, decimal string with 6 dp"
+                },
+                "netG": {
+                  "type": "string",
+                  "description": "Canonical grams, decimal string with 6 dp"
+                },
+                "stoneG": {
+                  "type": "string",
+                  "description": "Canonical grams, decimal string with 6 dp"
+                },
+                "fineG": {
+                  "type": "string",
+                  "description": "Canonical grams, decimal string with 6 dp"
+                },
+                "fineSource": {
+                  "type": "string",
+                  "enum": [
+                    "computed",
+                    "entered"
+                  ]
+                },
+                "pieces": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending_review",
+                    "active",
+                    "retired"
+                  ]
+                },
+                "weightExceptionReason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "review": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "by": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "UTC ISO-8601 timestamp"
+                    },
+                    "note": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "by",
+                    "at",
+                    "note"
+                  ]
+                },
+                "certificates": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Certificate"
+                  }
+                },
+                "checks": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MeasurementCheck"
+                  }
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Optimistic-lock version"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "UTC ISO-8601 timestamp"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "UTC ISO-8601 timestamp"
+                }
+              },
+              "required": [
+                "id",
+                "variantId",
+                "productId",
+                "productTitle",
+                "sku",
+                "serialTag",
+                "huid",
+                "metal",
+                "purity",
+                "grossG",
+                "netG",
+                "stoneG",
+                "fineG",
+                "fineSource",
+                "pieces",
+                "status",
+                "weightExceptionReason",
+                "review",
+                "certificates",
+                "checks",
+                "version",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "SerialItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "variantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productTitle": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "serialTag": {
+            "type": "string"
+          },
+          "huid": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metal": {
+            "type": "string",
+            "enum": [
+              "gold",
+              "silver",
+              "platinum",
+              "palladium",
+              "other"
+            ]
+          },
+          "purity": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "code": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "fineness": {
+                "type": "string"
+              },
+              "confirmed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "code",
+              "label",
+              "fineness",
+              "confirmed"
+            ]
+          },
+          "grossG": {
+            "type": "string",
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "netG": {
+            "type": "string",
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "stoneG": {
+            "type": "string",
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "fineG": {
+            "type": "string",
+            "description": "Canonical grams, decimal string with 6 dp"
+          },
+          "fineSource": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "entered"
+            ]
+          },
+          "fineFormula": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {}
+          },
+          "pieces": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_review",
+              "active",
+              "retired"
+            ]
+          },
+          "weightExceptionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "review": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "by": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO-8601 timestamp"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "by",
+              "at",
+              "note"
+            ]
+          },
+          "certificates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Certificate"
+            }
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JewelleryComponent"
+            }
+          },
+          "raw": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeasurementCheck"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          }
+        },
+        "required": [
+          "id",
+          "variantId",
+          "productId",
+          "productTitle",
+          "sku",
+          "serialTag",
+          "huid",
+          "metal",
+          "purity",
+          "grossG",
+          "netG",
+          "stoneG",
+          "fineG",
+          "fineSource",
+          "fineFormula",
+          "pieces",
+          "status",
+          "weightExceptionReason",
+          "review",
+          "certificates",
+          "components",
+          "raw",
+          "checks",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateSerialItemRequest": {
+        "type": "object",
+        "properties": {
+          "variantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serialTag": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+          },
+          "huid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "purityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gross": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightInput"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "net": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightInput"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "stone": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightInput"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "fine": {
+            "$ref": "#/components/schemas/WeightInput"
+          },
+          "pieces": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "certificates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Certificate"
+            },
+            "maxItems": 10,
+            "default": []
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComponentInput"
+            },
+            "maxItems": 50,
+            "default": []
+          },
+          "weightExceptionReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 5,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "variantId",
+          "serialTag",
+          "gross",
+          "net"
+        ]
+      },
+      "BulkSerialItemsResponse": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "serialTag": {
+                  "type": "string"
+                },
+                "grossG": {
+                  "type": "string",
+                  "description": "Canonical grams, decimal string with 6 dp"
+                },
+                "netG": {
+                  "type": "string",
+                  "description": "Canonical grams, decimal string with 6 dp"
+                },
+                "stoneG": {
+                  "type": "string",
+                  "description": "Canonical grams, decimal string with 6 dp"
+                },
+                "fineG": {
+                  "type": "string",
+                  "description": "Canonical grams, decimal string with 6 dp"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending_review",
+                    "active",
+                    "retired"
+                  ]
+                },
+                "checks": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MeasurementCheck"
+                  }
+                },
+                "id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "index",
+                "serialTag",
+                "grossG",
+                "netG",
+                "stoneG",
+                "fineG",
+                "status",
+                "checks",
+                "id"
+              ]
+            }
+          }
+        },
+        "required": [
+          "dryRun",
+          "created",
+          "rows"
+        ]
+      },
+      "SerialItemInput": {
+        "type": "object",
+        "properties": {
+          "serialTag": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+          },
+          "huid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "purityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gross": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightInput"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "net": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightInput"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "stone": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightInput"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "fine": {
+            "$ref": "#/components/schemas/WeightInput"
+          },
+          "pieces": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "certificates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Certificate"
+            },
+            "maxItems": 10,
+            "default": []
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComponentInput"
+            },
+            "maxItems": 50,
+            "default": []
+          },
+          "weightExceptionReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 5,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "serialTag",
+          "gross",
+          "net"
+        ]
+      },
+      "BulkSerialItemsRequest": {
+        "type": "object",
+        "properties": {
+          "variantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dryRun": {
+            "type": "boolean",
+            "default": false
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SerialItemInput"
+            },
+            "minItems": 1,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "variantId",
+          "items"
+        ]
+      },
+      "UpdateSerialItemRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "serialTag": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+          },
+          "huid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "purityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gross": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightInput"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "net": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightInput"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "stone": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightInput"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "fine": {
+            "$ref": "#/components/schemas/WeightInput"
+          },
+          "pieces": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "certificates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Certificate"
+            },
+            "maxItems": 10
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComponentInput"
+            },
+            "maxItems": 50
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "retired"
+            ]
+          },
+          "weightExceptionReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 5,
+            "maxLength": 500
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "ReviewSerialItemRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "version",
+          "decision",
+          "note"
         ]
       }
     },
@@ -12491,6 +14129,1331 @@
             }
           },
           "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/jewellery/settings": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Jewellery settings (tolerance, fine rounding, HUID format)",
+        "description": "Requires permission `catalog.read`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JewellerySettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update jewellery settings",
+        "description": "Requires permission `jewellery.edit`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateJewellerySettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JewellerySettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/jewellery/purities": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Purity definitions (metal, code, fineness)",
+        "description": "Requires permission `catalog.read`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurityList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create purity definition",
+        "description": "Requires permission `jewellery.edit`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePurityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurityDefinition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/jewellery/purities/{id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update/confirm purity (affects future computations only)",
+        "description": "Requires permission `jewellery.edit`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePurityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurityDefinition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/products/{id}/variants/{variantId}/jewellery-spec": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Variant jewellery spec (design measurements)",
+        "description": "Requires permission `catalog.read`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "variantId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JewellerySpec"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create/replace variant jewellery spec",
+        "description": "Requires permission `jewellery.edit`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "variantId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutJewellerySpecRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JewellerySpec"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/serial-items": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Search serialized items (tag, HUID, SKU)",
+        "description": "Requires permission `catalog.read`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending_review",
+                "active",
+                "retired"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "productId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "variantId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "gold",
+                "silver",
+                "platinum",
+                "palladium",
+                "other"
+              ]
+            },
+            "required": false,
+            "name": "metal",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "purityId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "-createdAt",
+                "createdAt",
+                "serialTag",
+                "-grossG",
+                "grossG"
+              ],
+              "default": "-createdAt"
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SerialItemPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create one serialized item with actual measurements",
+        "description": "Requires permission `jewellery.edit`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSerialItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SerialItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/serial-items/bulk": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Bulk add items for a variant (atomic; dryRun previews)",
+        "description": "Requires permission `jewellery.edit`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkSerialItemsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkSerialItemsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/serial-items/{id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Serialized item detail",
+        "description": "Requires permission `catalog.read`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SerialItem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update item (edit policy: reasons, HUID restrictions, retired read-only)",
+        "description": "Requires permission `jewellery.edit`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSerialItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SerialItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/serial-items/{id}/review": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Approve/reject a weight exception (reviewer ≠ editor)",
+        "description": "Requires permission `jewellery.review`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewSerialItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SerialItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
             "description": "Error",
             "content": {
               "application/json": {
