@@ -3,7 +3,7 @@
 | Phase | State | Gate | Notes |
 |---|---|---|---|
 | 01 FOUNDATION | approved, pushed (c52825f) | approved | 144 unit/integration + 9 E2E passing; see [phase-01-FOUNDATION.md](phase-01-FOUNDATION.md#results-2026-10-17--status-implemented-awaiting-review) |
-| 02 CATALOG | implemented, all gates green | **awaiting your review** | 171 unit/integration + 13 E2E passing; see [phase-02-CATALOG.md](phase-02-CATALOG.md) |
+| 02 CATALOG | approved, pushed (c336aee) | approved | 171 unit/integration + 13 E2E passing; see [phase-02-CATALOG.md](phase-02-CATALOG.md) |
 | 03 JEWELLERY | not started | — | |
 | 04 INVENTORY | not started | — | |
 | 05 CONNECTORS | not started | — | |
