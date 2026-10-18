@@ -75,6 +75,19 @@ Safe defaults were chosen where the specs are ambiguous; items marked **Proposed
 ## ADR-014 Deliberate subquery column qualification — Accepted (Phase 01)
 - Drizzle renders `${table.column}` unqualified in single-table queries; inside a correlated subquery that silently binds to the inner table (found via E2E screenshot: member counts showed 0). Raw-SQL subqueries must reference outer columns as `"table"."column"`. Regression test added.
 
+## ADR-015 Catalog model and behaviour — Accepted (Phase 02)
+- Product ≠ variant: products carry content (title, description, SEO, options, attributes); variants carry identity (SKU, barcode, option values). SKUs are unique per tenant case-insensitively; option-value combinations unique per product. Serialized items are Phase 03.
+- Product `status` (draft/active/archived) is separate from channel `publication`; storefronts show only active **and** published products with ≥1 active variant. Archiving unpublishes everywhere (outbox `ProductUnpublished`, an extension to the contract event list).
+- Attributes are tenant-defined, typed (text/number/boolean/select), numbers stored as decimal strings. Jewellery measurements will be dedicated typed columns (Phase 03), not free attributes.
+- Media: images only (JPEG/PNG/WebP/GIF, type sniffed from bytes, SVG rejected), ≤10 MB, stored at `tenants/{tenantId}/media/{id}`. Images are streamed through the API (tenant-scoped admin route; storefront route only for visible products) rather than public bucket URLs, so access rules stay in one place. A CDN can be added in front later (Phase 11).
+- CSV import is a merchant catalog import (not a connector). Group atomicity: a product with any invalid row is skipped entirely; commit re-validates and refuses (409) if results differ from the preview; one transaction; at most once.
+- Prices and stock are deliberately absent from catalog APIs until Phases 06/04.
+
+## ADR-016 Generative AI usage — Proposed (no AI in the product today)
+- Nothing in the specs requires an LLM, and specs/00 puts "AI-autonomous financial approval" out of scope. **No OpenAI (or other LLM) integration exists or is planned in Phases 01–12 by default.**
+- If wanted later, only as an optional, tenant-entitled, human-reviewed assistant behind an adapter interface (provider-agnostic, keys in a secret store, prompts/outputs audited, no customer PII sent without consent), for content tasks such as: product description/SEO drafts, image alt-text suggestions, CSV/ERP column-mapping suggestions (Phase 05). Never for prices, metal rates, tax/GST/HSN, stock, approvals, or anything financial/legal.
+- Requires explicit user decision (provider, data-processing terms, budget) before any work.
+
 ---
 
 ## Open decisions (Proposed — safe defaults applied, confirm before the dependent phase)

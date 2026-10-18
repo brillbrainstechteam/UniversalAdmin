@@ -63,11 +63,19 @@ export function Badge({
 
 export function StatusBadge({ status }: { status: string }) {
   const tone =
-    status === 'active' || status === 'verified' || status === 'accepted'
+    status === 'active' ||
+    status === 'verified' ||
+    status === 'accepted' ||
+    status === 'published' ||
+    status === 'committed'
       ? 'success'
-      : status === 'suspended' || status === 'revoked' || status === 'dead'
+      : status === 'suspended' || status === 'revoked' || status === 'dead' || status === 'archived'
         ? 'danger'
-        : status === 'pending' || status === 'provisioning' || status === 'expired'
+        : status === 'pending' ||
+            status === 'provisioning' ||
+            status === 'expired' ||
+            status === 'draft' ||
+            status === 'previewed'
           ? 'warning'
           : undefined;
   return <Badge tone={tone}>{status.replace(/_/g, ' ')}</Badge>;

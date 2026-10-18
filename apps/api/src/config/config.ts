@@ -19,6 +19,13 @@ const ConfigSchema = z.object({
   STOREFRONT_GATEWAY_KEY: z.string().min(32, 'STOREFRONT_GATEWAY_KEY must be at least 32 characters'),
   COOKIE_SECURE: bool.default('false'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  // Phase 02 media storage (S3-compatible; SeaweedFS in dev, ADR-012).
+  S3_ENDPOINT: z.string().url().default('http://localhost:9010'),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_BUCKET: z.string().min(3).default('uc-dev-media'),
+  S3_ACCESS_KEY_ID: z.string().default('uc_s3_dev'),
+  S3_SECRET_ACCESS_KEY: z.string().default('uc_s3_dev_secret'),
+  S3_AUTO_CREATE_BUCKET: bool.default('false'),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema> & {

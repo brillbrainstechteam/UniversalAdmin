@@ -7,7 +7,7 @@ Node 22+, pnpm 9, Docker Desktop. Google Chrome (E2E uses the installed Chrome; 
 ```bash
 cp .env.example .env          # local placeholders only — never real secrets
 pnpm install
-pnpm infra:up                 # Postgres :5440, Redis :6390 (object storage: add --profile storage, Phase 02)
+pnpm infra:up                 # Postgres :5440, Redis :6390, S3-compatible object store :9010
 pnpm build                    # builds packages and apps
 pnpm db:reset                 # drop + migrate + seed demo data into uc_dev (non-production only)
 ```
@@ -32,6 +32,10 @@ pnpm dev:platform   # http://localhost:3101
 | owner@northwind.demo | merchant admin | Northwind General (general commerce, no jewellery) — owner |
 | multi@demo.local | merchant admin | Aurum catalog editor + Northwind admin (tenant picker) |
 
+Each demo tenant has a small published demo catalog (products marked "Demo product" in their description).
+
+Storefront catalog demo: `curl -H "Host: northwind.localhost" http://localhost:4100/v1/storefront/catalog/products`
+
 Storefront resolver demo: `curl -H "Host: lumiere.localhost" http://localhost:4100/v1/storefront/config`
 (`pending-aurum.localhost` is seeded unverified and must return 404).
 
@@ -42,7 +46,7 @@ pnpm test          # unit + migration + integration (resets the uc_test database
 pnpm test:e2e      # Playwright; requires `pnpm build`; starts API + both admins itself
 pnpm openapi:generate   # regenerate docs/api/openapi.json after API contract changes
 ```
-Tests never touch `uc_dev`. Redis logical DBs: 0 dev, 1 API tests, 2 worker tests, 3 E2E.
+Tests never touch `uc_dev`. Redis logical DBs: 0 dev, 1 API tests, 2 worker tests, 3 E2E. S3 buckets: uc-dev-media, uc-test-media, uc-e2e-media.
 
 ## Database
 - Migrations: `packages/db/migrations` (forward-only; rollback notes in `ROLLBACK.md`). Generate with
@@ -51,4 +55,4 @@ Tests never touch `uc_dev`. Redis logical DBs: 0 dev, 1 API tests, 2 worker test
   `DbService.tenant()`; `DbService.system()` is reserved for platform/auth/resolver/worker paths.
 
 ## Ports
-5440 Postgres · 6390 Redis · 9010 object store (profile) · 4100 API · 3100 merchant admin · 3101 platform admin.
+5440 Postgres · 6390 Redis · 9010 object store · 4100 API · 3100 merchant admin · 3101 platform admin.

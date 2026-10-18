@@ -12,6 +12,7 @@ export const DOMAIN_EVENT_TYPES = [
   'MembershipChanged',
   // Canonical contract events (emitted from the phases that implement them)
   'ProductPublished',
+  'ProductUnpublished',
   'InventorySnapshotReceived',
   'InventoryMovementRecorded',
   'ReservationCreated',

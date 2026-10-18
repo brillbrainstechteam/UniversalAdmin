@@ -38,3 +38,17 @@ tenant; all `/v1/platform/*` calls need a platform session + platform role. Muta
 Platform roles: `platform_owner` = all platform permissions; `platform_support` = tenants.read + audit.read.
 Request, response and error **schemas** for every endpoint are in the OpenAPI document. Worked example payloads
 per endpoint (contract requirement) are not yet written — tracked as a Phase 02 documentation task.
+
+## Phase 02 — catalog
+
+| Endpoint | Permission | Notes / guards | Audit action |
+|---|---|---|---|
+| GET /v1/admin/products[/{id}], categories, collections[/{id}], attribute-definitions | catalog.read | tenant-scoped; search/filter/sort/cursor | — |
+| GET /v1/admin/media/{id}/content | catalog.read | tenant via header or `?tenantId=` (GET only, membership enforced) | — |
+| POST/PATCH /v1/admin/products, variants | catalog.edit | `jewellery` type needs entitlement; SKU/barcode/option uniqueness; status transitions; `version` | product.created / updated / activated / archived / set_draft, variant.created / updated |
+| POST/PATCH/DELETE /v1/admin/products/{id}/media | catalog.edit | sniffed images ≤10 MB, ≤50 per product | product.media_added / updated / removed |
+| PUT/DELETE /v1/admin/products/{id}/publications/{channelId} | catalog.publish | product must be active, channel active and own; idempotent | product.published / unpublished (+ outbox) |
+| POST/PATCH/DELETE categories; POST/PATCH collections, PUT collections/{id}/products; POST/PATCH attribute-definitions | catalog.edit | cycle check; only empty categories deletable; removing an in-use select option rejected | category.*, collection.*, attribute.* |
+| GET/POST/PATCH/DELETE /v1/admin/saved-views | catalog.read | private unless shared; only owner may change | — |
+| GET/POST /v1/admin/catalog/imports, GET {id}, POST {id}/commit, {id}/discard | catalog.edit | **Idempotency-Key** on upload; ≤1000 rows; commit once, re-validated | catalog.import_previewed / committed / discarded |
+| GET /v1/storefront/catalog/*, /v1/storefront/media/{id} | public (domain-resolved) | active + published + ≥1 active variant; no internal ids, no prices | — |

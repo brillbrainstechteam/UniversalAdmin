@@ -20,7 +20,8 @@ export async function createApp(config: AppConfig): Promise<NestExpressApplicati
   // Next.js admin apps proxy /api/* to us; trust only the loopback proxy for client IPs.
   app.set('trust proxy', 'loopback');
   app.disable('x-powered-by');
-  app.use(express.json({ limit: '1mb' }));
+  // Largest JSON body is a 2 MB CSV import (CreateImportRequest); keep a small margin.
+  app.use(express.json({ limit: '2500kb' }));
   app.use(cookieParser());
   app.use(correlationMiddleware(logger));
   app.use((_req: unknown, res: express.Response, next: express.NextFunction) => {

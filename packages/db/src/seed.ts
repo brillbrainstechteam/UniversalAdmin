@@ -4,6 +4,7 @@ import { systemTx } from './client';
 import { writeAudit } from './audit';
 import { hashPassword } from './crypto';
 import { provisionTenantRecords, type ProvisionTenantInput } from './provisioning';
+import { DEMO_CATALOG, seedDemoCatalog } from './seed-catalog';
 import {
   channelDomains,
   channels,
@@ -228,6 +229,11 @@ export async function seedDemo(db: Db, password: string): Promise<SeedResult> {
     await addMember(tx, lumiere.tenant.id, u.lumiereOwner, [lumiere.rolesByKey.owner!.id]);
     await addMember(tx, northwind.tenant.id, u.northwindOwner, [northwind.rolesByKey.owner!.id]);
     await addMember(tx, northwind.tenant.id, u.multi, [northwind.rolesByKey.admin!.id]);
+
+    for (const [key, p] of Object.entries({ aurum, lumiere, northwind })) {
+      const demo = DEMO_CATALOG[key as keyof typeof DEMO_CATALOG];
+      await seedDemoCatalog(tx, p.tenant.id, p.channelIds[0]!, demo.categories, demo.items);
+    }
 
     return {
       tenantIds: { aurum: aurum.tenant.id, lumiere: lumiere.tenant.id, northwind: northwind.tenant.id },

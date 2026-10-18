@@ -13,6 +13,10 @@ import {
 export const PERMISSION_KEY = 'uc:permission';
 export const ANY_MEMBER_KEY = 'uc:any-member';
 export const PLATFORM_PERMISSION_KEY = 'uc:platform-permission';
+export const TENANT_QUERY_KEY = 'uc:tenant-query';
+
+/** GET route may receive the tenant id as ?tenantId= (for <img src>); membership is still enforced. */
+export const AllowTenantQuery = () => SetMetadata(TENANT_QUERY_KEY, true);
 
 /** Handler requires this tenant permission (checked server-side by PermissionGuard). */
 export const RequirePermission = (permission: TenantPermission) => SetMetadata(PERMISSION_KEY, permission);

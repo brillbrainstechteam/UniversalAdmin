@@ -36,6 +36,13 @@ export class StorefrontResolver {
   }
 
   async resolve(hostname: string): Promise<StorefrontConfig> {
+    return (await this.resolveContext(hostname)).config;
+  }
+
+  /** Internal ids for the resolved storefront (never returned to clients). */
+  async resolveContext(
+    hostname: string,
+  ): Promise<{ tenantId: string; channelId: string; config: StorefrontConfig }> {
     const notFound = new AppError(404, 'STOREFRONT_NOT_FOUND', 'No storefront is configured for this domain');
     if (!HOST_RE.test(hostname)) throw notFound;
     // System context: the hostname → tenant mapping is by definition cross-tenant.
@@ -59,7 +66,7 @@ export class StorefrontResolver {
     ) {
       throw notFound;
     }
-    return {
+    const config: StorefrontConfig = {
       tenant: { slug: row.tenant.slug, displayName: row.tenant.displayName, isDemo: row.tenant.isDemo },
       channel: { code: row.channel.code, name: row.channel.name, type: row.channel.type as ChannelType },
       hostname,
@@ -68,6 +75,7 @@ export class StorefrontResolver {
       locale: row.tenant.defaultLocale,
       timezone: row.tenant.timezone,
     };
+    return { tenantId: row.tenant.id, channelId: row.channel.id, config };
   }
 }
 

@@ -43,6 +43,8 @@ jobs:
       MERCHANT_ADMIN_URL: http://localhost:3100
       STOREFRONT_GATEWAY_KEY: ci-only-storefront-gateway-key-0123456789abcdef
       SEED_DEMO_PASSWORD: CiDemoPass!2026
+      S3_ENDPOINT: http://localhost:9010
+      S3_AUTO_CREATE_BUCKET: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -54,6 +56,10 @@ jobs:
           cache: pnpm
       - name: Bootstrap database roles (same script as docker-compose)
         run: PGPASSWORD=postgres_ci_only psql -h localhost -p 5440 -U postgres -v ON_ERROR_STOP=1 -f infra/postgres/init.sql
+      - name: Start S3-compatible object store (SeaweedFS, ADR-012)
+        run: |
+          docker run -d --name objectstore -p 9010:8333 chrislusf/seaweedfs:3.80 server -s3 -s3.port=8333 -dir=/data
+          for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:9010 && break; sleep 2; done
       - run: pnpm install --frozen-lockfile
       - name: Dependency audit (high and critical)
         run: pnpm audit --audit-level high

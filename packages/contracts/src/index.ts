@@ -8,4 +8,5 @@ export * from './dto/auth';
 export * from './dto/tenant';
 export * from './dto/admin';
 export * from './dto/storefront';
+export * from './dto/catalog';
 export * from './openapi';

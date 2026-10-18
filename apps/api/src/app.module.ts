@@ -12,6 +12,17 @@ import {
   TenantGuard,
 } from './modules/access/guards';
 import { AuditQueryService } from './modules/audit/audit-query.service';
+import { StorageService } from './common/storage.service';
+import { CatalogController } from './modules/catalog/catalog.controller';
+import { CatalogService } from './modules/catalog/catalog.service';
+import { ImportService } from './modules/catalog/import.service';
+import { SavedViewsService } from './modules/catalog/saved-views.service';
+import { TaxonomyController } from './modules/catalog/taxonomy.controller';
+import { TaxonomyService } from './modules/catalog/taxonomy.service';
+import {
+  StorefrontCatalogController,
+  StorefrontCatalogService,
+} from './modules/storefront/storefront-catalog.controller';
 import { AuthController } from './modules/auth/auth.controller';
 import { AuthService } from './modules/auth/auth.service';
 import { SessionService } from './modules/auth/session.service';
@@ -47,6 +58,9 @@ export class AppModule {
         StaffController,
         PlatformController,
         StorefrontController,
+        CatalogController,
+        TaxonomyController,
+        StorefrontCatalogController,
       ],
       providers: [
         { provide: APP_GUARD, useClass: CsrfGuard },
@@ -65,6 +79,12 @@ export class AppModule {
         StaffService,
         PlatformTenantsService,
         StorefrontResolver,
+        StorageService,
+        CatalogService,
+        TaxonomyService,
+        SavedViewsService,
+        ImportService,
+        StorefrontCatalogService,
       ],
     };
   }

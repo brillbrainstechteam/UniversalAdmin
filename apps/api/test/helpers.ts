@@ -18,6 +18,8 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
       REDIS_URL: TEST_REDIS_URL,
       LOG_LEVEL: 'silent',
       MERCHANT_ADMIN_URL: 'http://localhost:3100',
+      S3_BUCKET: 'uc-test-media',
+      S3_AUTO_CREATE_BUCKET: 'true',
     },
     { loginRateLimit: { perIp: 100_000, perEmail: 100_000, windowSeconds: 600 }, ...overrides },
   );

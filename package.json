@@ -6,7 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "infra:up": "docker compose -f infra/docker-compose.yml up -d --wait",
+    "infra:up": "docker compose -f infra/docker-compose.yml --profile storage up -d --wait",
     "infra:down": "docker compose -f infra/docker-compose.yml down",
     "build": "pnpm -r --filter ./packages/** run build && pnpm -r --filter ./apps/** run build",
     "db:migrate": "pnpm --filter @uc/db run migrate",

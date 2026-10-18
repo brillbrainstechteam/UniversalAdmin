@@ -15,6 +15,8 @@ const apiEnv = {
   DATABASE_URL: requireEnv('TEST_DATABASE_URL'),
   REDIS_URL: E2E_REDIS_URL,
   LOG_LEVEL: 'warn',
+  S3_BUCKET: 'uc-e2e-media',
+  S3_AUTO_CREATE_BUCKET: 'true',
 };
 
 export default defineConfig({

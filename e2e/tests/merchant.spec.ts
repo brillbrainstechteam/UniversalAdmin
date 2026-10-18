@@ -30,7 +30,8 @@ test('owner signs in, sees preset-gated navigation and edits business settings',
     await expect(nav(page).getByRole('link', { name: item, exact: true })).toBeVisible();
   }
   // Modules from later phases are not shown as dead links.
-  await expect(nav(page).getByRole('link', { name: 'Products' })).toHaveCount(0);
+  await expect(nav(page).getByRole('link', { name: 'Inventory' })).toHaveCount(0); // Phase 04
+  await expect(nav(page).getByRole('link', { name: 'Products', exact: true })).toBeVisible(); // Phase 02
   await page.screenshot({ path: 'screenshots/merchant-home.png', fullPage: true });
 
   await nav(page).getByRole('link', { name: 'General' }).click();

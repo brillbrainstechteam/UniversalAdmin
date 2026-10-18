@@ -86,3 +86,31 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 export function newIdempotencyKey(): string {
   return crypto.randomUUID();
 }
+
+/** multipart/form-data upload (single "file" field) through the same-origin proxy. */
+export async function apiUpload<T>(path: string, file: File, tenantId: string): Promise<T> {
+  const form = new FormData();
+  form.append('file', file);
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}`, {
+      method: 'POST',
+      body: form,
+      headers: { 'X-UC-CSRF': '1', 'X-Tenant-Id': tenantId, Accept: 'application/json' },
+      credentials: 'same-origin',
+    });
+  } catch {
+    throw new ApiError(0, 'NETWORK_ERROR', 'Cannot reach the server. Check your connection and try again.');
+  }
+  const data = (await response.json().catch(() => ({}))) as Partial<ErrorBody> & T;
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data.code ?? 'UNKNOWN',
+      data.message ?? `Upload failed (${response.status})`,
+      data.details,
+      data.correlationId,
+    );
+  }
+  return data;
+}

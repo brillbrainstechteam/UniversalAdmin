@@ -6,6 +6,7 @@ import * as A from './dto/auth';
 import * as T from './dto/tenant';
 import * as M from './dto/admin';
 import * as S from './dto/storefront';
+import * as C from './dto/catalog';
 
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 type Scope = 'auth' | 'admin' | 'platform' | 'storefront' | 'system';
@@ -23,6 +24,10 @@ export interface ApiRouteDoc {
   response?: z.ZodTypeAny;
   status?: 200 | 201 | 204;
   errors?: number[];
+  /** multipart/form-data upload with a single "file" field. */
+  multipart?: boolean;
+  /** Response is raw bytes (image). */
+  binary?: boolean;
 }
 
 const json = (schema: z.ZodTypeAny, description = 'OK') => ({
@@ -82,6 +87,46 @@ export const API_ROUTES: ApiRouteDoc[] = [
   { method: 'get', path: '/v1/platform/audit-events', scope: 'platform', permission: 'platform.audit.read', summary: 'Platform-wide audit log', query: M.PlatformAuditQuery, response: M.AuditPage },
   // ---- storefront ----
   { method: 'get', path: '/v1/storefront/config', scope: 'storefront', summary: 'Resolve verified domain to channel brand/theme config', response: S.StorefrontConfig, errors: [404] },
+  // ---- Phase 02: catalog (admin) ----
+  { method: 'get', path: '/v1/admin/products', scope: 'admin', permission: 'catalog.read', summary: 'Search/filter/sort products', query: C.ProductListQuery, response: C.ProductPage },
+  { method: 'post', path: '/v1/admin/products', scope: 'admin', permission: 'catalog.edit', summary: 'Create product with variants', body: C.CreateProductRequest, response: C.Product, status: 201, errors: [400, 403, 409] },
+  { method: 'get', path: '/v1/admin/products/{id}', scope: 'admin', permission: 'catalog.read', summary: 'Product detail (variants, media, publications)', params: IdParam, response: C.Product, errors: [404] },
+  { method: 'patch', path: '/v1/admin/products/{id}', scope: 'admin', permission: 'catalog.edit', summary: 'Update product incl. guarded status transitions', params: IdParam, body: C.UpdateProductRequest, response: C.Product, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/products/{id}/variants', scope: 'admin', permission: 'catalog.edit', summary: 'Add variant', params: IdParam, body: C.CreateVariantRequest, response: C.Product, status: 201, errors: [400, 404, 409] },
+  { method: 'patch', path: '/v1/admin/products/{id}/variants/{variantId}', scope: 'admin', permission: 'catalog.edit', summary: 'Update variant', params: C.VariantIdParams, body: C.UpdateVariantRequest, response: C.Product, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/products/{id}/media', scope: 'admin', permission: 'catalog.edit', summary: 'Upload image (multipart field "file"; JPEG/PNG/WebP/GIF ≤10 MB, type sniffed)', params: IdParam, multipart: true, response: C.Product, status: 201, errors: [400, 404, 413, 415] },
+  { method: 'patch', path: '/v1/admin/products/{id}/media', scope: 'admin', permission: 'catalog.edit', summary: 'Reorder gallery and set alt texts', params: IdParam, body: C.UpdateProductMediaRequest, response: C.Product, errors: [400, 404] },
+  { method: 'delete', path: '/v1/admin/products/{id}/media/{mediaId}', scope: 'admin', permission: 'catalog.edit', summary: 'Remove image from product', params: C.MediaParams, response: C.Product, errors: [404] },
+  { method: 'get', path: '/v1/admin/media/{id}/content', scope: 'admin', permission: 'catalog.read', summary: 'Image bytes (tenant via X-Tenant-Id or ?tenantId= for <img>)', params: IdParam, binary: true, errors: [404] },
+  { method: 'put', path: '/v1/admin/products/{id}/publications/{channelId}', scope: 'admin', permission: 'catalog.publish', summary: 'Publish product to channel', params: C.ChannelParams, response: C.PublicationList, errors: [404, 409] },
+  { method: 'delete', path: '/v1/admin/products/{id}/publications/{channelId}', scope: 'admin', permission: 'catalog.publish', summary: 'Unpublish product from channel', params: C.ChannelParams, response: C.PublicationList, errors: [404] },
+  { method: 'get', path: '/v1/admin/categories', scope: 'admin', permission: 'catalog.read', summary: 'Category tree (flat, ordered)', response: C.CategoryList },
+  { method: 'post', path: '/v1/admin/categories', scope: 'admin', permission: 'catalog.edit', summary: 'Create category', body: C.CreateCategoryRequest, response: C.Category, status: 201, errors: [400, 404, 409] },
+  { method: 'patch', path: '/v1/admin/categories/{id}', scope: 'admin', permission: 'catalog.edit', summary: 'Update/move category (cycle-checked)', params: IdParam, body: C.UpdateCategoryRequest, response: C.Category, errors: [400, 404, 409] },
+  { method: 'delete', path: '/v1/admin/categories/{id}', scope: 'admin', permission: 'catalog.edit', summary: 'Delete empty category', params: IdParam, status: 204, errors: [404, 409] },
+  { method: 'get', path: '/v1/admin/collections', scope: 'admin', permission: 'catalog.read', summary: 'List collections', query: C.CollectionListQuery, response: C.CollectionPage },
+  { method: 'post', path: '/v1/admin/collections', scope: 'admin', permission: 'catalog.edit', summary: 'Create collection', body: C.CreateCollectionRequest, response: C.Collection, status: 201, errors: [400, 409] },
+  { method: 'get', path: '/v1/admin/collections/{id}', scope: 'admin', permission: 'catalog.read', summary: 'Collection with ordered products', params: IdParam, response: C.CollectionDetail, errors: [404] },
+  { method: 'patch', path: '/v1/admin/collections/{id}', scope: 'admin', permission: 'catalog.edit', summary: 'Update collection', params: IdParam, body: C.UpdateCollectionRequest, response: C.CollectionDetail, errors: [400, 404, 409] },
+  { method: 'put', path: '/v1/admin/collections/{id}/products', scope: 'admin', permission: 'catalog.edit', summary: 'Replace ordered membership', params: IdParam, body: C.SetCollectionProductsRequest, response: C.CollectionDetail, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/attribute-definitions', scope: 'admin', permission: 'catalog.read', summary: 'Product attribute definitions', response: C.AttributeDefinitionList },
+  { method: 'post', path: '/v1/admin/attribute-definitions', scope: 'admin', permission: 'catalog.edit', summary: 'Create attribute definition', body: C.CreateAttributeDefinitionRequest, response: C.AttributeDefinition, status: 201, errors: [400, 409] },
+  { method: 'patch', path: '/v1/admin/attribute-definitions/{id}', scope: 'admin', permission: 'catalog.edit', summary: 'Update attribute definition (type immutable)', params: IdParam, body: C.UpdateAttributeDefinitionRequest, response: C.AttributeDefinition, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/saved-views', scope: 'admin', permission: 'catalog.read', summary: 'Own and shared saved views', query: z.object({ resource: z.literal('products') }), response: C.SavedViewList },
+  { method: 'post', path: '/v1/admin/saved-views', scope: 'admin', permission: 'catalog.read', summary: 'Create saved view', body: C.CreateSavedViewRequest, response: C.SavedView, status: 201, errors: [400, 409] },
+  { method: 'patch', path: '/v1/admin/saved-views/{id}', scope: 'admin', permission: 'catalog.read', summary: 'Update own saved view', params: IdParam, body: C.UpdateSavedViewRequest, response: C.SavedView, errors: [400, 404, 409] },
+  { method: 'delete', path: '/v1/admin/saved-views/{id}', scope: 'admin', permission: 'catalog.read', summary: 'Delete own saved view', params: IdParam, status: 204, errors: [404] },
+  { method: 'get', path: '/v1/admin/catalog/imports', scope: 'admin', permission: 'catalog.edit', summary: 'List CSV import batches', query: z.object({ limit: z.coerce.number().int().min(1).max(100).optional(), cursor: z.string().optional() }), response: C.ImportBatchPage },
+  { method: 'post', path: '/v1/admin/catalog/imports', scope: 'admin', permission: 'catalog.edit', idempotent: true, summary: 'Upload CSV and build a validated preview (writes no products)', body: C.CreateImportRequest, response: C.ImportBatch, status: 201, errors: [400, 413, 422] },
+  { method: 'get', path: '/v1/admin/catalog/imports/{id}', scope: 'admin', permission: 'catalog.edit', summary: 'Import batch with per-row results', params: IdParam, response: C.ImportBatch, errors: [404] },
+  { method: 'post', path: '/v1/admin/catalog/imports/{id}/commit', scope: 'admin', permission: 'catalog.edit', summary: 'Atomically apply valid rows (re-validated; once only)', params: IdParam, response: C.ImportBatch, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/catalog/imports/{id}/discard', scope: 'admin', permission: 'catalog.edit', summary: 'Discard a previewed batch', params: IdParam, response: C.ImportBatch, errors: [404, 409] },
+  // ---- Phase 02: storefront catalog (domain-resolved, published + active only, no prices) ----
+  { method: 'get', path: '/v1/storefront/catalog/products', scope: 'storefront', summary: 'Products published to this channel', query: C.StorefrontProductQuery, response: C.StorefrontProductPage, errors: [404] },
+  { method: 'get', path: '/v1/storefront/catalog/products/{slug}', scope: 'storefront', summary: 'Product detail by slug', params: C.SlugParam, response: C.StorefrontProduct, errors: [404] },
+  { method: 'get', path: '/v1/storefront/catalog/categories', scope: 'storefront', summary: 'Categories', response: C.StorefrontCategoryList, errors: [404] },
+  { method: 'get', path: '/v1/storefront/catalog/collections/{slug}', scope: 'storefront', summary: 'Active collection', params: C.SlugParam, response: C.StorefrontCollection, errors: [404] },
+  { method: 'get', path: '/v1/storefront/media/{id}', scope: 'storefront', summary: 'Image of a product published to this channel', params: IdParam, binary: true, errors: [404] },
 ];
 
 const SECURITY: Record<Scope, RouteConfig['security']> = {
@@ -109,7 +154,11 @@ export function buildOpenApiDocument(
   for (const route of API_ROUTES) {
     const responses: RouteConfig['responses'] = {};
     const status = route.status ?? 200;
-    responses[status] = route.response ? json(route.response) : { description: 'No content' };
+    responses[status] = route.binary
+      ? { description: 'Image bytes', content: { 'image/*': { schema: z.string().openapi({ format: 'binary' }) } } }
+      : route.response
+        ? json(route.response)
+        : { description: 'No content' };
     const errors = new Set<number>([...(route.errors ?? []), 500]);
     if (route.scope === 'admin' || route.scope === 'platform') [401, 403].forEach((c) => errors.add(c));
     for (const code of errors) responses[code] = json(ErrorBody, 'Error');
@@ -130,7 +179,11 @@ export function buildOpenApiDocument(
         params: route.params,
         query: route.query,
         headers: Object.keys(headerShape).length ? z.object(headerShape) : undefined,
-        body: route.body ? { content: { 'application/json': { schema: route.body } } } : undefined,
+        body: route.multipart
+          ? { content: { 'multipart/form-data': { schema: z.object({ file: z.string().openapi({ format: 'binary' }) }) } } }
+          : route.body
+            ? { content: { 'application/json': { schema: route.body } } }
+            : undefined,
       },
       responses,
     });
@@ -140,7 +193,7 @@ export function buildOpenApiDocument(
     openapi: '3.1.0',
     info: {
       title: 'Universal Commerce OS API',
-      version: '1.0.0-phase01',
+      version: '1.0.0-phase02',
       description:
         'Multi-tenant commerce platform API. Errors use {code,message,details,correlationId}. Decimals are strings; money is {amountMinor,currency}.',
     },

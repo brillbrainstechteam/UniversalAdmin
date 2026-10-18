@@ -4,7 +4,18 @@ import { join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { requireEnv } from '../src/env';
 import { MIGRATIONS_FOLDER, runMigrations } from '../src/migrate';
-import { RLS_TABLES } from '../src/schema';
+import { CATALOG_RLS_TABLES } from '../src/catalog-schema';
+import { RLS_TABLES as CORE_RLS_TABLES } from '../src/schema';
+
+const RLS_TABLES = [...CORE_RLS_TABLES, ...CATALOG_RLS_TABLES];
+const NON_TENANT_TABLES = [
+  'idempotency_keys',
+  'platform_admins',
+  'processed_events',
+  'sessions',
+  'tenants',
+  'users',
+];
 import { ownerPool } from './helpers';
 
 const pool = ownerPool();
@@ -15,27 +26,7 @@ describe('migrations (F-10)', () => {
     const { rows } = await pool.query<{ table_name: string }>(
       `select table_name from information_schema.tables where table_schema = 'public' order by 1`,
     );
-    expect(rows.map((r) => r.table_name)).toEqual(
-      [
-        'audit_events',
-        'channel_domains',
-        'channels',
-        'idempotency_keys',
-        'invitations',
-        'locations',
-        'membership_roles',
-        'memberships',
-        'outbox_events',
-        'platform_admins',
-        'processed_events',
-        'roles',
-        'sessions',
-        'stores',
-        'tenant_entitlements',
-        'tenants',
-        'users',
-      ].sort(),
-    );
+    expect(rows.map((r) => r.table_name)).toEqual([...RLS_TABLES, ...NON_TENANT_TABLES].sort());
   });
 
   it('are idempotent: re-running applies nothing and keeps the journal unchanged', async () => {
@@ -81,7 +72,7 @@ describe('migrations (F-10)', () => {
       cpSync(MIGRATIONS_FOLDER, join(dir, 'migrations'), { recursive: true });
       writeFileSync(
         join(dir, 'drizzle.config.ts'),
-        `export default { dialect: 'postgresql', schema: './src/schema.ts', out: './.drift-probe/migrations' };`,
+        `export default { dialect: 'postgresql', schema: ['./src/schema.ts', './src/catalog-schema.ts'], out: './.drift-probe/migrations' };`,
       );
       const output = execFileSync(
         process.execPath,

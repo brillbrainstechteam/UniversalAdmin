@@ -32,6 +32,8 @@ export const ErrorCodes = [
   'LOCATION_OUT_OF_SCOPE',
   'INVALID_STATE_TRANSITION',
   'RATE_LIMITED',
+  'UNSUPPORTED_MEDIA_TYPE',
+  'PAYLOAD_TOO_LARGE',
   'INTERNAL',
 ] as const;
 export type ErrorCode = (typeof ErrorCodes)[number];

@@ -9,7 +9,12 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Audience, PlatformPermission, TenantPermission } from '@uc/contracts';
 import { APP_CONFIG, type AppConfig } from '../../config/config';
-import { ANY_MEMBER_KEY, PERMISSION_KEY, PLATFORM_PERMISSION_KEY } from '../../common/decorators';
+import {
+  ANY_MEMBER_KEY,
+  PERMISSION_KEY,
+  PLATFORM_PERMISSION_KEY,
+  TENANT_QUERY_KEY,
+} from '../../common/decorators';
 import { AppError, Errors } from '../../common/errors';
 import type { AppRequest } from '../../common/request';
 import { SessionService } from '../auth/session.service';
@@ -73,12 +78,25 @@ export class PlatformSessionGuard extends SessionGuard {
 /** Resolves X-Tenant-Id against an active membership of the authenticated user on every request. */
 @Injectable()
 export class TenantGuard implements CanActivate {
-  constructor(private readonly access: AccessService) {}
+  constructor(
+    private readonly access: AccessService,
+    private readonly reflector: Reflector,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<AppRequest>();
     if (!req.auth) throw Errors.unauthenticated();
-    const tenantId = req.header('x-tenant-id');
+    let tenantId = req.header('x-tenant-id');
+    // <img> requests cannot send headers: opted-in GET routes may name the tenant in ?tenantId= instead.
+    // Membership is still validated exactly as for the header.
+    if (
+      !tenantId &&
+      req.method === 'GET' &&
+      this.reflector.getAllAndOverride<boolean>(TENANT_QUERY_KEY, [context.getHandler(), context.getClass()])
+    ) {
+      const q = (req.query as Record<string, unknown>).tenantId;
+      tenantId = typeof q === 'string' ? q : undefined;
+    }
     if (!tenantId) throw new AppError(400, 'TENANT_REQUIRED', 'X-Tenant-Id header is required');
     if (!UUID_RE.test(tenantId)) throw new AppError(400, 'TENANT_REQUIRED', 'X-Tenant-Id must be a UUID');
     req.tenant = await this.access.resolveTenant(req.auth.userId, tenantId.toLowerCase());
