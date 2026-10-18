@@ -1,5 +1,6 @@
 import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
 import type { ErrorBody, ErrorCode } from '@uc/contracts';
+import { InventoryError } from '@uc/db';
 import type { Response } from 'express';
 import type { Logger } from 'pino';
 import { AppError } from './errors';
@@ -27,6 +28,9 @@ const UNIQUE_FIELDS: Record<string, string> = {
   serial_items_tenant_tag_uq: 'serialTag',
   serial_items_tenant_huid_uq: 'huid',
   purity_definitions_tenant_code_uq: 'code',
+  stock_documents_reference_uq: 'reference',
+  transfers_number_uq: 'number',
+  reservations_serial_active_uq: 'serialItemId',
 };
 
 interface PgError {
@@ -72,7 +76,7 @@ export class ErrorFilter implements ExceptionFilter {
     } else if (parser?.type === 'entity.parse.failed' || parser?.type === 'encoding.unsupported') {
       status = 400;
       body = { code: 'VALIDATION_FAILED', message: 'Request body is not valid JSON' };
-    } else if (exception instanceof AppError) {
+    } else if (exception instanceof AppError || exception instanceof InventoryError) {
       status = exception.status;
       body = { code: exception.code, message: exception.message, details: exception.details };
     } else if (exception instanceof HttpException) {
@@ -86,6 +90,10 @@ export class ErrorFilter implements ExceptionFilter {
       status = 409;
       const field = (pg.constraint && UNIQUE_FIELDS[pg.constraint]) ?? 'value';
       body = { code: 'DUPLICATE', message: `${field} is already in use`, details: { field } };
+    } else if (pg?.code === '23514' && pg.constraint?.startsWith('stock_balances_')) {
+      // Database backstop for oversell / negative stock (the engine normally rejects first).
+      status = 409;
+      body = { code: 'INSUFFICIENT_STOCK', message: 'Not enough stock for this change' };
     } else if (pg?.code === '23503') {
       status = 422;
       body = { code: 'VALIDATION_FAILED', message: 'Referenced record does not exist in this tenant' };

@@ -66,3 +66,30 @@ per endpoint (contract requirement) are not yet written — tracked as a Phase 0
 | POST /v1/admin/serial-items/{id}/review | jewellery.review | reviewer ≠ creator/last editor (`SEPARATION_OF_DUTIES`) | serial_item.exception_approved / rejected |
 
 System roles: owner/admin gain `jewellery.review`; inventory operator gains `jewellery.edit` (data migration 0006 for existing tenants).
+
+## Phase 04 — inventory
+
+All endpoints need the `inventory` feature. Location-bound actions require the location to be inside the member's location scope (`LOCATION_OUT_OF_SCOPE`); reads are filtered to the scope.
+
+| Endpoint | Permission | Notes / guards | Audit action |
+|---|---|---|---|
+| GET /v1/admin/inventory/summary, levels, variants/{id}, movements, reservations, transfers[/{id}], counts[/{id}], issues, settings, channels | inventory.read | scope-filtered; channel ATP only for unscoped members | — |
+| PUT /v1/admin/inventory/settings | inventory.adjust | `version`; TTL 1–10080 min | inventory.settings_updated |
+| PUT /v1/admin/inventory/variants/{id}/settings | inventory.adjust | `version` (0 = none yet); tracking/unit locked once the variant has stock history; piece tracking needs `serialized_items` | inventory.variant_settings_updated |
+| PUT /v1/admin/inventory/channels/{id}/locations | stores.manage | unscoped members only | channel.stock_locations_updated |
+| POST /v1/admin/inventory/receipts | inventory.adjust | **Idempotency-Key**; reference unique per type (409 DUPLICATE); pieces must be active and not yet received | inventory.received (+ outbox InventoryMovementRecorded) |
+| POST /v1/admin/inventory/adjustments | inventory.adjust | **Idempotency-Key**; reason code + note; never below 0 or below reserved+committed (409 INSUFFICIENT_STOCK); quantity-tracked only | inventory.adjusted |
+| POST /v1/admin/inventory/condition-changes | inventory.adjust | sellable ↔ damaged ↔ quarantine; note required | inventory.condition_changed |
+| POST /v1/admin/inventory/serial-items/{id}/write-off | inventory.adjust | piece must be in stock (not held/committed/in transit) | serial_item.written_off |
+| POST /v1/admin/inventory/reservations | inventory.reserve | **Idempotency-Key** stored on the hold (replay → 200); ATP − buffer; serial variants need `serialItemId` | reservation.created (+ ReservationCreated) |
+| POST /v1/admin/inventory/reservations/{id}/commit | inventory.reserve | held and not expired (RESERVATION_EXPIRED) | reservation.committed (+ ReservationCommitted) |
+| POST /v1/admin/inventory/reservations/{id}/release | inventory.reserve | held, or committed with a reason | reservation.released (+ ReservationReleased) |
+| POST /v1/admin/inventory/transfers | inventory.transfer | **Idempotency-Key**; source in scope; stock moves to the destination's in transit | transfer.dispatched |
+| POST /v1/admin/inventory/transfers/{id}/receive, /cancel | inventory.transfer | `version`; receive needs destination scope, cancel source scope | transfer.received / transfer.cancelled |
+| POST /v1/admin/inventory/counts | inventory.adjust | `dryRun` previews; older `asOf` → rejected_stale + issue; below holds → 409 | inventory.counted / inventory.count_rejected_stale (+ InventorySnapshotReceived) |
+| POST /v1/admin/inventory/issues/{id}/resolve | inventory.adjust | note ≥ 5 chars; open only | reconciliation_issue.resolved (+ ReconciliationIssueResolved) |
+| POST /v1/admin/inventory/reconcile | inventory.adjust | ledger vs balances vs reservations vs pieces | inventory.reconciled (+ ReconciliationIssueOpened per new issue) |
+
+Phase 03 change: retiring a serialized item (or rejecting its review) now requires stock state `not_received` or `written_off`.
+System roles (data migration 0008): owner, admin, inventory operator and sales rep gain `inventory.reserve`; sales rep gains `inventory.read`.
+Worker (no HTTP): expires due holds every 15 s and reconciles every 10 min across tenants.

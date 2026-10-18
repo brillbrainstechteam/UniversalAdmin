@@ -22,6 +22,7 @@ export const TENANT_PERMISSIONS = {
   'inventory.read': { group: 'Inventory', label: 'View stock', phase: 4 },
   'inventory.adjust': { group: 'Inventory', label: 'Adjust stock with reason', phase: 4 },
   'inventory.transfer': { group: 'Inventory', label: 'Transfer stock between locations', phase: 4 },
+  'inventory.reserve': { group: 'Inventory', label: 'Hold, commit and release stock reservations', phase: 4 },
   'integrations.read': { group: 'Integrations', label: 'View connectors and sync jobs', phase: 5 },
   'integrations.manage': { group: 'Integrations', label: 'Configure connectors and mappings', phase: 5 },
   'reconciliation.resolve': { group: 'Integrations', label: 'Resolve reconciliation issues', phase: 5 },
@@ -77,7 +78,7 @@ export const SYSTEM_ROLES: Record<string, { name: string; description: string; p
     inventory_operator: {
       name: 'Inventory operator',
       description: 'Validated stock adjustments within assigned locations',
-      permissions: ['inventory.read', 'inventory.adjust', 'inventory.transfer', 'locations.read', 'catalog.read', 'jewellery.edit'],
+      permissions: ['inventory.read', 'inventory.adjust', 'inventory.transfer', 'inventory.reserve', 'locations.read', 'catalog.read', 'jewellery.edit'],
     },
     rate_editor: {
       name: 'Rate editor',
@@ -92,7 +93,7 @@ export const SYSTEM_ROLES: Record<string, { name: string; description: string; p
     sales_rep: {
       name: 'Sales representative',
       description: 'Assigned companies, quotes and orders',
-      permissions: ['companies.read', 'orders.read', 'orders.manage', 'catalog.read', 'pricing.read'],
+      permissions: ['companies.read', 'orders.read', 'orders.manage', 'catalog.read', 'pricing.read', 'inventory.read', 'inventory.reserve'],
     },
     accountant: {
       name: 'Accountant',

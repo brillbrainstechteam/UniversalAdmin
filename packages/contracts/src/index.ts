@@ -10,5 +10,7 @@ export * from './dto/admin';
 export * from './dto/storefront';
 export * from './dto/catalog';
 export * from './dto/jewellery';
+export * from './dto/inventory';
 export * from './jewellery-math';
+export * from './stock-math';
 export * from './openapi';

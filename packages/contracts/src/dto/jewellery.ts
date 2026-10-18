@@ -218,6 +218,9 @@ export const SerialItem = z
     fineFormula: z.record(z.unknown()).nullable(),
     pieces: z.number().int(),
     status: SerialItemStatus,
+    /** Physical stock state (Phase 04); pieces enter stock through an inventory receipt. */
+    stockState: z.enum(['not_received', 'in_stock', 'reserved', 'committed', 'in_transit', 'written_off']),
+    location: z.object({ id: Uuid, code: z.string(), name: z.string() }).nullable(),
     weightExceptionReason: z.string().nullable(),
     review: z.object({ by: z.string().nullable(), at: Timestamp, note: z.string().nullable() }).nullable(),
     certificates: z.array(Certificate),
@@ -320,6 +323,8 @@ export const SerialItemListQuery = PageQuery.extend({
   variantId: Uuid.optional(),
   metal: Metal.optional(),
   purityId: Uuid.optional(),
+  stockState: z.enum(['not_received', 'in_stock', 'reserved', 'committed', 'in_transit', 'written_off']).optional(),
+  locationId: Uuid.optional(),
   sort: z.enum(['-createdAt', 'createdAt', 'serialTag', '-grossG', 'grossG']).default('-createdAt'),
 });
 export type SerialItemListQuery = z.infer<typeof SerialItemListQuery>;

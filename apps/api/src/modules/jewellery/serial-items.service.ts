@@ -12,6 +12,7 @@ import {
 } from '@uc/contracts';
 import {
   jewelleryComponents,
+  locations,
   jewellerySpecs,
   products,
   serialItems,
@@ -245,11 +246,13 @@ export class SerialItemsService {
         productId: products.id,
         productTitle: products.title,
         reviewer: users.email,
+        loc: { id: locations.id, code: locations.code, name: locations.name },
       })
       .from(serialItems)
       .innerJoin(variants, eq(variants.id, serialItems.variantId))
       .innerJoin(products, eq(products.id, variants.productId))
       .leftJoin(users, eq(users.id, serialItems.reviewedBy))
+      .leftJoin(locations, eq(locations.id, serialItems.locationId))
       .where(and(eq(serialItems.tenantId, ctx.tenantId), eq(serialItems.id, id)));
     if (!row) throw Errors.notFound('Serialized item');
     const comps = await tx
@@ -279,6 +282,8 @@ export class SerialItemsService {
       fineFormula: (i.fineFormula as Record<string, unknown> | null) ?? null,
       pieces: i.pieces,
       status: i.status,
+      stockState: i.stockState,
+      location: row.loc?.id ? row.loc : null,
       weightExceptionReason: i.weightExceptionReason,
       review: i.reviewedAt ? { by: row.reviewer, at: iso(i.reviewedAt), note: i.reviewNote } : null,
       certificates: i.certificates as SerialItem['certificates'],
@@ -343,6 +348,8 @@ export class SerialItemsService {
     if (query.productId) where.push(eq(variants.productId, query.productId));
     if (query.metal) where.push(eq(serialItems.metal, query.metal));
     if (query.purityId) where.push(eq(serialItems.purityId, query.purityId));
+    if (query.stockState) where.push(eq(serialItems.stockState, query.stockState));
+    if (query.locationId) where.push(eq(serialItems.locationId, query.locationId));
     if (query.q) {
       const p = likePattern(query.q);
       where.push(
@@ -362,10 +369,17 @@ export class SerialItemsService {
     }
     return this.db.tenant(ctx.tenantId, async (tx) => {
       const rows = await tx
-        .select({ i: serialItems, sku: variants.sku, productId: products.id, productTitle: products.title })
+        .select({
+          i: serialItems,
+          sku: variants.sku,
+          productId: products.id,
+          productTitle: products.title,
+          loc: { id: locations.id, code: locations.code, name: locations.name },
+        })
         .from(serialItems)
         .innerJoin(variants, eq(variants.id, serialItems.variantId))
         .innerJoin(products, eq(products.id, variants.productId))
+        .leftJoin(locations, eq(locations.id, serialItems.locationId))
         .where(and(...where))
         .orderBy(...(descending ? [desc(column), desc(serialItems.id)] : [asc(column), asc(serialItems.id)]))
         .limit(query.limit + 1);
@@ -401,6 +415,8 @@ export class SerialItemsService {
             fineSource: r.i.fineSource,
             pieces: r.i.pieces,
             status: r.i.status,
+            stockState: r.i.stockState,
+            location: r.loc?.id ? r.loc : null,
             weightExceptionReason: r.i.weightExceptionReason,
             review: null,
             certificates: r.i.certificates as SerialItem['certificates'],
@@ -541,6 +557,15 @@ export class SerialItemsService {
       if (before.version !== input.version) throw Errors.versionConflict(before.version);
       if (before.status === 'retired') {
         throw new AppError(409, 'INVALID_STATE_TRANSITION', 'Retired items are read-only');
+      }
+      // A piece that is physically in stock (or held, sold, moving) leaves stock through Inventory first.
+      if (input.status === 'retired' && !['not_received', 'written_off'].includes(before.stockState)) {
+        throw new AppError(
+          409,
+          'INVALID_STATE_TRANSITION',
+          `This piece is ${before.stockState.replace('_', ' ')}. Write it off in Inventory before retiring it.`,
+          { stockState: before.stockState },
+        );
       }
       const purities = await loadPurities(tx, ctx.tenantId);
       const settings = await loadSettings(tx, ctx.tenantId);
@@ -730,6 +755,14 @@ export class SerialItemsService {
         );
       }
       const status = input.decision === 'approve' ? 'active' : 'retired';
+      if (status === 'retired' && !['not_received', 'written_off'].includes(item.stockState)) {
+        throw new AppError(
+          409,
+          'INVALID_STATE_TRANSITION',
+          'This piece is in stock: correct its measurements, or write it off in Inventory before rejecting it',
+          { stockState: item.stockState },
+        );
+      }
       await tx
         .update(serialItems)
         .set({

@@ -56,6 +56,10 @@ export default tseslint.config(
       'apps/api/src/modules/jewellery/**',
       'packages/contracts/src/jewellery-math.ts',
       'packages/contracts/src/dto/jewellery.ts',
+      'apps/api/src/modules/inventory/**',
+      'packages/contracts/src/stock-math.ts',
+      'packages/contracts/src/dto/inventory.ts',
+      'packages/db/src/inventory.ts',
     ],
     rules: {
       'no-restricted-syntax': [

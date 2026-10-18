@@ -7,6 +7,7 @@ import {
 } from '@uc/contracts';
 import { eq } from 'drizzle-orm';
 import type { Tx } from './client';
+import { stockSettings } from './inventory-schema';
 import { jewellerySettings, purityDefinitions } from './jewellery-schema';
 import { channels, locations, roles, stores, tenants } from './schema';
 
@@ -148,6 +149,7 @@ export async function provisionTenantRecords(
   // Jewellery reference data (harmless for general tenants; features gate its use). Platform defaults must be
   // confirmed by the merchant before computed fine weights are relied on.
   await tx.insert(jewellerySettings).values({ tenantId: tenant.id });
+  await tx.insert(stockSettings).values({ tenantId: tenant.id });
   await tx
     .insert(purityDefinitions)
     .values(

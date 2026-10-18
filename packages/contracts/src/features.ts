@@ -1,7 +1,7 @@
 import type { TenantPermission } from './permissions';
 
 /** Platform phase whose modules are live in this build. Nav never shows modules from later phases. */
-export const IMPLEMENTED_PHASE = 3;
+export const IMPLEMENTED_PHASE = 4;
 
 export const FEATURES = {
   catalog: { label: 'Catalog', description: 'Products, variants, categories, collections' },

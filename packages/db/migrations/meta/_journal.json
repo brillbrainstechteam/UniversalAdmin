@@ -50,6 +50,20 @@
       "when": 1792323411314,
       "tag": "0006_jewellery_security",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792335812223,
+      "tag": "0007_inventory",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792335824374,
+      "tag": "0008_inventory_security",
+      "breakpoints": true
     }
   ]
 }

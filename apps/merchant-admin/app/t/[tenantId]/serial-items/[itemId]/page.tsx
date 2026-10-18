@@ -243,11 +243,19 @@ export default function SerialItemPage() {
             <Link href={`/t/${tenantId}/serial-items`}>Serialized items</Link> ·{' '}
             <Link href={`/t/${tenantId}/products/${i.productId}`}>{i.productTitle}</Link> ·{' '}
             <span className="uc-mono">{i.sku}</span>
+            {context.features.includes('inventory') && can('inventory.read') && (
+              <>
+                {' '}
+                · <Link href={`/t/${tenantId}/inventory/variants/${i.variantId}`}>Stock</Link>
+              </>
+            )}
           </>
         }
         actions={
           <>
             <StatusBadge status={i.status} />
+            <StatusBadge status={i.stockState} />
+            {i.location && <span className="uc-muted">{i.location.name}</span>}
             {!readOnly && (
               <Button variant="danger" onClick={() => setRetiring(true)}>
                 Retire

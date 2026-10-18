@@ -1,6 +1,7 @@
 import { createDb, requireEnv } from '@uc/db';
 import pino from 'pino';
 import { lifecycleLogConsumer, startConsumerWorker } from './consumers';
+import { runInventoryLoops } from './inventory-jobs';
 import { bullPublisher, createDomainEventsQueue, runRelayLoop } from './relay';
 
 async function main(): Promise<void> {
@@ -17,12 +18,14 @@ async function main(): Promise<void> {
   const worker = startConsumerWorker(db.db, [lifecycleLogConsumer(logger)], connection, logger);
   const controller = new AbortController();
   const relay = runRelayLoop(db.db, bullPublisher(queue), logger, controller.signal);
-  logger.info('worker started: outbox relay + domain-events consumers');
+  const inventory = runInventoryLoops(db.db, logger, controller.signal);
+  logger.info('worker started: outbox relay + domain-events consumers + inventory expiry/reconciliation');
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'shutting down');
     controller.abort();
     await relay;
+    await inventory;
     await worker.close();
     await queue.close();
     await db.close();

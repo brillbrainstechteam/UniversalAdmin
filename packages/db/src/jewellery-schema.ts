@@ -14,7 +14,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { variants } from './catalog-schema';
-import { tenants, users } from './schema';
+import { locations, tenants, users } from './schema';
 
 // Phase 03 jewellery measurements. All weights are canonical grams NUMERIC(20,6) — never floats.
 const ts = (name: string) => timestamp(name, { withTimezone: true, mode: 'date', precision: 3 });
@@ -149,6 +149,13 @@ export const serialItems = pgTable(
     /** Formula id + inputs used when computed (provenance). */
     fineFormula: jsonb('fine_formula'),
     pieces: integer('pieces').notNull().default(1),
+    /** Phase 04: where the piece is and its stock state (lifecycle status is separate). */
+    locationId: uuid('location_id'),
+    stockState: text('stock_state', {
+      enum: ['not_received', 'in_stock', 'reserved', 'committed', 'in_transit', 'written_off'],
+    })
+      .notNull()
+      .default('not_received'),
     status: text('status', { enum: ['pending_review', 'active', 'retired'] })
       .notNull()
       .default('active'),
@@ -195,6 +202,15 @@ export const serialItems = pgTable(
     ),
     check('serial_items_pieces_ck', sql`${t.pieces} between 1 and 1000`),
     check('serial_items_status_ck', sql`${t.status} in ('pending_review','active','retired')`),
+    foreignKey({ columns: [t.tenantId, t.locationId], foreignColumns: [locations.tenantId, locations.id] }),
+    check(
+      'serial_items_stock_state_ck',
+      sql`${t.stockState} in ('not_received','in_stock','reserved','committed','in_transit','written_off')`,
+    ),
+    check(
+      'serial_items_located_ck',
+      sql`${t.stockState} in ('not_received','written_off') or ${t.locationId} is not null`,
+    ),
     check('serial_items_huid_upper_ck', sql`${t.huid} is null or ${t.huid} = upper(${t.huid})`),
   ],
 );

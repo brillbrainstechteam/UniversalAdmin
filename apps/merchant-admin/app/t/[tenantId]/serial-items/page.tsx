@@ -30,12 +30,13 @@ function SerialItemsList() {
   const [status, setStatus] = useState('');
   const [purityId, setPurityId] = useState('');
   const [sort, setSort] = useState('-createdAt');
+  const [stockState, setStockState] = useState('');
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q), 300);
     return () => clearTimeout(t);
   }, [q]);
   const enabled = can('catalog.read') && context.features.includes('serialized_items');
-  const filters = { q: debounced, status, purityId, sort, variantId };
+  const filters = { q: debounced, status, purityId, sort, variantId, stockState };
   const pager = useCursorPagination(JSON.stringify(filters));
   const items = useTenantQuery<Page<Row>>(
     ['serial-items'],
@@ -54,7 +55,7 @@ function SerialItemsList() {
     <>
       <PageHeader
         title="Serialized items"
-        description="Physical pieces with their own actual measurements and HUID. Stock and availability arrive with Inventory (Phase 04)."
+        description="Physical pieces with their own actual measurements and HUID. A piece enters stock when it is received in Inventory."
       />
       {variantId && (
         <Card>
@@ -80,6 +81,20 @@ function SerialItemsList() {
               { value: 'active', label: 'Active' },
               { value: 'pending_review', label: 'Pending review' },
               { value: 'retired', label: 'Retired' },
+            ]}
+          />
+          <SelectField
+            label="Stock"
+            value={stockState}
+            onChange={(e) => setStockState(e.target.value)}
+            options={[
+              { value: '', label: 'Any' },
+              { value: 'not_received', label: 'Not received' },
+              { value: 'in_stock', label: 'In stock' },
+              { value: 'reserved', label: 'Held' },
+              { value: 'committed', label: 'Committed' },
+              { value: 'in_transit', label: 'In transit' },
+              { value: 'written_off', label: 'Written off' },
             ]}
           />
           <SelectField
@@ -114,7 +129,9 @@ function SerialItemsList() {
           pagination={pager.controls(items.data?.nextCursor)}
           empty={
             <EmptyState
-              title={debounced || status || purityId ? 'No pieces match' : 'No serialized pieces yet'}
+              title={
+                debounced || status || purityId || stockState ? 'No pieces match' : 'No serialized pieces yet'
+              }
               description="Add pieces from a jewellery product’s measurements card."
             />
           }
@@ -149,6 +166,16 @@ function SerialItemsList() {
             { key: 'gross', header: 'Gross', render: (i) => grams(i.grossG) },
             { key: 'net', header: 'Net', render: (i) => grams(i.netG) },
             { key: 'fine', header: 'Fine', render: (i) => grams(i.fineG) },
+            {
+              key: 'stock',
+              header: 'Stock',
+              render: (i) => (
+                <>
+                  <StatusBadge status={i.stockState} />
+                  {i.location && <span className="uc-muted"> {i.location.name}</span>}
+                </>
+              ),
+            },
             {
               key: 'status',
               header: 'Status',

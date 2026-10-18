@@ -15,6 +15,9 @@ import { AuditQueryService } from './modules/audit/audit-query.service';
 import { StorageService } from './common/storage.service';
 import { CatalogController } from './modules/catalog/catalog.controller';
 import { JewelleryController } from './modules/jewellery/jewellery.controller';
+import { InventoryController } from './modules/inventory/inventory.controller';
+import { InventoryQueryService } from './modules/inventory/inventory-query.service';
+import { InventoryService } from './modules/inventory/inventory.service';
 import { JewelleryService } from './modules/jewellery/jewellery.service';
 import { SerialItemsService } from './modules/jewellery/serial-items.service';
 import { CatalogService } from './modules/catalog/catalog.service';
@@ -65,6 +68,7 @@ export class AppModule {
         TaxonomyController,
         StorefrontCatalogController,
         JewelleryController,
+        InventoryController,
       ],
       providers: [
         { provide: APP_GUARD, useClass: CsrfGuard },
@@ -91,6 +95,8 @@ export class AppModule {
         StorefrontCatalogService,
         JewelleryService,
         SerialItemsService,
+        InventoryQueryService,
+        InventoryService,
       ],
     };
   }

@@ -8,6 +8,7 @@ import * as M from './dto/admin';
 import * as S from './dto/storefront';
 import * as C from './dto/catalog';
 import * as J from './dto/jewellery';
+import * as I from './dto/inventory';
 
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 type Scope = 'auth' | 'admin' | 'platform' | 'storefront' | 'system';
@@ -142,6 +143,35 @@ export const API_ROUTES: ApiRouteDoc[] = [
   { method: 'get', path: '/v1/admin/serial-items/{id}', scope: 'admin', permission: 'catalog.read', summary: 'Serialized item detail', params: IdParam, response: J.SerialItem, errors: [404] },
   { method: 'patch', path: '/v1/admin/serial-items/{id}', scope: 'admin', permission: 'jewellery.edit', summary: 'Update item (edit policy: reasons, HUID restrictions, retired read-only)', params: IdParam, body: J.UpdateSerialItemRequest, response: J.SerialItem, errors: [400, 403, 404, 409] },
   { method: 'post', path: '/v1/admin/serial-items/{id}/review', scope: 'admin', permission: 'jewellery.review', summary: 'Approve/reject a weight exception (reviewer ≠ editor)', params: IdParam, body: J.ReviewSerialItemRequest, response: J.SerialItem, errors: [400, 403, 404, 409] },
+  // ---- Phase 04: inventory ----
+  { method: 'get', path: '/v1/admin/inventory/summary', scope: 'admin', permission: 'inventory.read', summary: 'Inventory dashboard counters (low/out of stock, holds, transfers, issues)', response: I.InventorySummary },
+  { method: 'get', path: '/v1/admin/inventory/levels', scope: 'admin', permission: 'inventory.read', summary: 'Stock levels and ATP per variant (filter by location/channel/stock state)', query: I.StockLevelQuery, response: I.StockLevelPage, errors: [400] },
+  { method: 'get', path: '/v1/admin/inventory/variants/{id}', scope: 'admin', permission: 'inventory.read', summary: 'Variant stock: balances per location/condition, ATP by location/channel, pieces', params: IdParam, response: I.VariantStock, errors: [404] },
+  { method: 'put', path: '/v1/admin/inventory/variants/{id}/settings', scope: 'admin', permission: 'inventory.adjust', summary: 'Variant stock settings (tracking, unit, buffer, low-stock threshold)', params: IdParam, body: I.UpdateVariantStockSettingsRequest, response: I.VariantStockSettings, errors: [400, 403, 404, 409] },
+  { method: 'get', path: '/v1/admin/inventory/movements', scope: 'admin', permission: 'inventory.read', summary: 'Stock ledger (append-only movements)', query: I.MovementQuery, response: I.StockMovementPage, errors: [400] },
+  { method: 'get', path: '/v1/admin/inventory/settings', scope: 'admin', permission: 'inventory.read', summary: 'Tenant stock settings', response: I.StockSettings },
+  { method: 'put', path: '/v1/admin/inventory/settings', scope: 'admin', permission: 'inventory.adjust', summary: 'Update tenant stock settings (buffer, hold TTL, low-stock threshold)', body: I.UpdateStockSettingsRequest, response: I.StockSettings, errors: [400, 409] },
+  { method: 'get', path: '/v1/admin/inventory/channels', scope: 'admin', permission: 'inventory.read', summary: 'Which locations feed each channel', response: I.ChannelStockLocationsList },
+  { method: 'put', path: '/v1/admin/inventory/channels/{id}/locations', scope: 'admin', permission: 'stores.manage', summary: 'Set the stock locations of a channel (empty = all)', params: IdParam, body: I.PutChannelLocationsRequest, response: I.ChannelStockLocations, errors: [400, 404] },
+  { method: 'post', path: '/v1/admin/inventory/receipts', scope: 'admin', permission: 'inventory.adjust', idempotent: true, summary: 'Receive stock (quantities or exact serialized pieces); a reference posts once', body: I.ReceiptRequest, response: I.StockOperationResult, status: 201, errors: [400, 403, 404, 409, 422] },
+  { method: 'post', path: '/v1/admin/inventory/adjustments', scope: 'admin', permission: 'inventory.adjust', idempotent: true, summary: 'Adjust stock with a reason code (never below reserved + committed)', body: I.AdjustmentRequest, response: I.StockOperationResult, status: 201, errors: [400, 403, 404, 409, 422] },
+  { method: 'post', path: '/v1/admin/inventory/condition-changes', scope: 'admin', permission: 'inventory.adjust', summary: 'Move stock between sellable / damaged / quarantine', body: I.ConditionChangeRequest, response: I.StockOperationResult, status: 201, errors: [400, 403, 404, 409] },
+  { method: 'post', path: '/v1/admin/inventory/serial-items/{id}/write-off', scope: 'admin', permission: 'inventory.adjust', summary: 'Write off one serialized piece (lost, destroyed, melted)', params: IdParam, body: I.WriteOffRequest, response: I.StockOperationResult, status: 201, errors: [400, 403, 404, 409] },
+  { method: 'get', path: '/v1/admin/inventory/reservations', scope: 'admin', permission: 'inventory.read', summary: 'Reservations (held, committed, released, expired)', query: I.ReservationListQuery, response: I.ReservationPage, errors: [400] },
+  { method: 'post', path: '/v1/admin/inventory/reservations', scope: 'admin', permission: 'inventory.reserve', idempotent: true, summary: 'Hold stock or one exact piece (row-locked ATP check, TTL)', body: I.CreateReservationRequest, response: I.Reservation, status: 201, errors: [400, 403, 404, 409, 422] },
+  { method: 'post', path: '/v1/admin/inventory/reservations/{id}/commit', scope: 'admin', permission: 'inventory.reserve', summary: 'Commit a held reservation (fails if it expired)', params: IdParam, response: I.Reservation, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/inventory/reservations/{id}/release', scope: 'admin', permission: 'inventory.reserve', summary: 'Release a held or committed reservation', params: IdParam, body: I.ReleaseReservationRequest, response: I.Reservation, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/inventory/transfers', scope: 'admin', permission: 'inventory.read', summary: 'Transfers between locations', query: I.TransferListQuery, response: I.TransferPage, errors: [400] },
+  { method: 'post', path: '/v1/admin/inventory/transfers', scope: 'admin', permission: 'inventory.transfer', idempotent: true, summary: 'Dispatch a transfer (stock moves to in transit at the destination)', body: I.CreateTransferRequest, response: I.Transfer, status: 201, errors: [400, 403, 404, 409, 422] },
+  { method: 'get', path: '/v1/admin/inventory/transfers/{id}', scope: 'admin', permission: 'inventory.read', summary: 'Transfer detail', params: IdParam, response: I.Transfer, errors: [404] },
+  { method: 'post', path: '/v1/admin/inventory/transfers/{id}/receive', scope: 'admin', permission: 'inventory.transfer', summary: 'Receive a transfer at the destination', params: IdParam, body: I.TransferActionRequest, response: I.Transfer, errors: [400, 403, 404, 409] },
+  { method: 'post', path: '/v1/admin/inventory/transfers/{id}/cancel', scope: 'admin', permission: 'inventory.transfer', summary: 'Cancel an in-transit transfer (stock returns to the source)', params: IdParam, body: I.TransferActionRequest, response: I.Transfer, errors: [400, 403, 404, 409] },
+  { method: 'get', path: '/v1/admin/inventory/counts', scope: 'admin', permission: 'inventory.read', summary: 'Stocktakes / stock snapshots', query: I.StockCountListQuery, response: I.StockCountPage, errors: [400] },
+  { method: 'post', path: '/v1/admin/inventory/counts', scope: 'admin', permission: 'inventory.adjust', summary: 'Submit a count (dryRun previews variance; stale as-of is recorded, not applied)', body: I.CreateStockCountRequest, response: I.StockCount, status: 201, errors: [400, 403, 404, 409] },
+  { method: 'get', path: '/v1/admin/inventory/counts/{id}', scope: 'admin', permission: 'inventory.read', summary: 'Stock count detail', params: IdParam, response: I.StockCount, errors: [404] },
+  { method: 'get', path: '/v1/admin/inventory/issues', scope: 'admin', permission: 'inventory.read', summary: 'Reconciliation issues', query: I.IssueListQuery, response: I.ReconciliationIssuePage, errors: [400] },
+  { method: 'post', path: '/v1/admin/inventory/issues/{id}/resolve', scope: 'admin', permission: 'inventory.adjust', summary: 'Resolve an issue with a note', params: IdParam, body: I.ResolveIssueRequest, response: I.ReconciliationIssue, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/inventory/reconcile', scope: 'admin', permission: 'inventory.adjust', summary: 'Run reconciliation now (ledger vs balances, reservations, serialized pieces)', response: I.ReconcileResponse },
 ];
 const SECURITY: Record<Scope, RouteConfig['security']> = {
   auth: [],

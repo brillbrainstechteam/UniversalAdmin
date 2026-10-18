@@ -5,10 +5,16 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { requireEnv } from '../src/env';
 import { MIGRATIONS_FOLDER, runMigrations } from '../src/migrate';
 import { CATALOG_RLS_TABLES } from '../src/catalog-schema';
+import { INVENTORY_RLS_TABLES } from '../src/inventory-schema';
 import { JEWELLERY_RLS_TABLES } from '../src/jewellery-schema';
 import { RLS_TABLES as CORE_RLS_TABLES } from '../src/schema';
 
-const RLS_TABLES = [...CORE_RLS_TABLES, ...CATALOG_RLS_TABLES, ...JEWELLERY_RLS_TABLES];
+const RLS_TABLES = [
+  ...CORE_RLS_TABLES,
+  ...CATALOG_RLS_TABLES,
+  ...JEWELLERY_RLS_TABLES,
+  ...INVENTORY_RLS_TABLES,
+];
 const NON_TENANT_TABLES = [
   'idempotency_keys',
   'platform_admins',
@@ -73,7 +79,7 @@ describe('migrations (F-10)', () => {
       cpSync(MIGRATIONS_FOLDER, join(dir, 'migrations'), { recursive: true });
       writeFileSync(
         join(dir, 'drizzle.config.ts'),
-        `export default { dialect: 'postgresql', schema: ['./src/schema.ts', './src/catalog-schema.ts', './src/jewellery-schema.ts'], out: './.drift-probe/migrations' };`,
+        `export default { dialect: 'postgresql', schema: ['./src/schema.ts', './src/catalog-schema.ts', './src/jewellery-schema.ts', './src/inventory-schema.ts'], out: './.drift-probe/migrations' };`,
       );
       const output = execFileSync(
         process.execPath,

@@ -5,6 +5,7 @@ import { writeAudit } from './audit';
 import { hashPassword } from './crypto';
 import { provisionTenantRecords, type ProvisionTenantInput } from './provisioning';
 import { DEMO_CATALOG, seedDemoCatalog } from './seed-catalog';
+import { DEMO_INVENTORY, seedDemoInventory } from './seed-inventory';
 import { DEMO_JEWELLERY, seedDemoJewellery } from './seed-jewellery';
 import {
   channelDomains,
@@ -239,6 +240,19 @@ export async function seedDemo(db: Db, password: string): Promise<SeedResult> {
       const j = DEMO_JEWELLERY[key as keyof typeof DEMO_JEWELLERY];
       await seedDemoJewellery(tx, p.tenant.id, j.specs, j.items);
     }
+    await seedDemoInventory(
+      tx,
+      aurum.tenant.id,
+      { main: aurum.locationId, mumbai: mumbai!.id },
+      DEMO_INVENTORY.aurum,
+    );
+    await seedDemoInventory(tx, lumiere.tenant.id, { main: lumiere.locationId }, DEMO_INVENTORY.lumiere);
+    await seedDemoInventory(
+      tx,
+      northwind.tenant.id,
+      { main: northwind.locationId },
+      DEMO_INVENTORY.northwind,
+    );
 
     return {
       tenantIds: { aurum: aurum.tenant.id, lumiere: lumiere.tenant.id, northwind: northwind.tenant.id },
