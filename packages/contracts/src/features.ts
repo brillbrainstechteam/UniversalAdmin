@@ -1,7 +1,7 @@
 import type { TenantPermission } from './permissions';
 
 /** Platform phase whose modules are live in this build. Nav never shows modules from later phases. */
-export const IMPLEMENTED_PHASE = 4;
+export const IMPLEMENTED_PHASE = 7;
 
 export const FEATURES = {
   catalog: { label: 'Catalog', description: 'Products, variants, categories, collections' },
@@ -150,5 +150,11 @@ export function computeNav(
       item.phase <= implementedPhase &&
       (!item.feature || featureSet.has(item.feature)) &&
       (item.anyPermission.length === 0 || item.anyPermission.some((p) => permissionSet.has(p))),
-  ).map(({ key, label, path, section }) => ({ key, label, path, section }));
+  ).map(({ key, label, path, section }) => ({
+    key,
+    // Merchants without metal rates (general commerce) price from list prices only.
+    label: key === 'rates' && !featureSet.has('metal_rates') ? 'Pricing' : label,
+    path,
+    section,
+  }));
 }

@@ -9,6 +9,9 @@ import * as S from './dto/storefront';
 import * as C from './dto/catalog';
 import * as J from './dto/jewellery';
 import * as I from './dto/inventory';
+import * as X from './dto/integrations';
+import * as P from './dto/pricing';
+import * as O from './dto/orders';
 
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 type Scope = 'auth' | 'admin' | 'platform' | 'storefront' | 'system';
@@ -30,6 +33,8 @@ export interface ApiRouteDoc {
   multipart?: boolean;
   /** Response is raw bytes (image). */
   binary?: boolean;
+  /** Response is a CSV download. */
+  csv?: boolean;
 }
 
 const json = (schema: z.ZodTypeAny, description = 'OK') => ({
@@ -172,6 +177,94 @@ export const API_ROUTES: ApiRouteDoc[] = [
   { method: 'get', path: '/v1/admin/inventory/issues', scope: 'admin', permission: 'inventory.read', summary: 'Reconciliation issues', query: I.IssueListQuery, response: I.ReconciliationIssuePage, errors: [400] },
   { method: 'post', path: '/v1/admin/inventory/issues/{id}/resolve', scope: 'admin', permission: 'inventory.adjust', summary: 'Resolve an issue with a note', params: IdParam, body: I.ResolveIssueRequest, response: I.ReconciliationIssue, errors: [400, 404, 409] },
   { method: 'post', path: '/v1/admin/inventory/reconcile', scope: 'admin', permission: 'inventory.adjust', summary: 'Run reconciliation now (ledger vs balances, reservations, serialized pieces)', response: I.ReconcileResponse },
+  // ---- Phase 05: integrations (connector framework) ----
+  { method: 'get', path: '/v1/admin/integrations/connectors', scope: 'admin', permission: 'integrations.read', summary: 'Connector catalog with honest status, blockers and vendor discovery', response: X.ConnectorCatalog },
+  { method: 'put', path: '/v1/admin/integrations/connectors/{key}/discovery', scope: 'admin', permission: 'integrations.manage', summary: 'Record the vendor discovery checklist for a blocked connector', params: X.ConnectorKeyParam, body: X.PutDiscoveryRequest, response: X.ConnectorCatalog, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/integrations/connections', scope: 'admin', permission: 'integrations.read', summary: 'Connections with freshness and exception counts', response: X.ConnectionList },
+  { method: 'post', path: '/v1/admin/integrations/connections', scope: 'admin', permission: 'integrations.manage', summary: 'Create a connection (available connectors only; credential reference, never a secret)', body: X.CreateConnectionRequest, response: X.Connection, status: 201, errors: [400, 409] },
+  { method: 'get', path: '/v1/admin/integrations/connections/{id}', scope: 'admin', permission: 'integrations.read', summary: 'Connection detail', params: IdParam, response: X.Connection, errors: [404] },
+  { method: 'patch', path: '/v1/admin/integrations/connections/{id}', scope: 'admin', permission: 'integrations.manage', summary: 'Update name, status, credential reference, settings or field ownership (reason required for ownership/disconnect)', params: IdParam, body: X.UpdateConnectionRequest, response: X.Connection, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/integrations/connections/{id}/test', scope: 'admin', permission: 'integrations.manage', summary: 'Test the connection', params: IdParam, response: z.object({ ok: z.boolean(), message: z.string() }), errors: [404] },
+  { method: 'get', path: '/v1/admin/integrations/connections/{id}/mappings', scope: 'admin', permission: 'integrations.read', summary: 'Field mapping versions', params: IdParam, response: X.FieldMappingList, errors: [404] },
+  { method: 'post', path: '/v1/admin/integrations/connections/{id}/mappings', scope: 'admin', permission: 'integrations.manage', summary: 'Publish a new mapping version (becomes active)', params: IdParam, body: X.CreateMappingRequest, response: X.FieldMapping, status: 201, errors: [400, 404] },
+  { method: 'post', path: '/v1/admin/integrations/mappings/preview', scope: 'admin', permission: 'integrations.read', summary: 'Preview a mapping on sample rows (writes nothing)', body: X.MappingPreviewRequest, response: X.MappingPreviewResponse, errors: [400] },
+  { method: 'post', path: '/v1/admin/integrations/connections/{id}/jobs/file', scope: 'admin', permission: 'integrations.manage', summary: 'Upload a CSV/XLSX file and stage a preview job (writes no catalogue or stock)', params: IdParam, body: X.FilePreviewRequest, response: X.SyncJob, status: 201, errors: [400, 403, 404, 409, 413] },
+  { method: 'post', path: '/v1/admin/integrations/connections/{id}/jobs/pull', scope: 'admin', permission: 'integrations.manage', summary: 'Pull from the source (simulator) and stage a preview job', params: IdParam, response: X.SyncJob, status: 201, errors: [403, 404, 409] },
+  { method: 'get', path: '/v1/admin/integrations/jobs', scope: 'admin', permission: 'integrations.read', summary: 'Sync jobs', query: X.SyncJobListQuery, response: X.SyncJobPage, errors: [400] },
+  { method: 'get', path: '/v1/admin/integrations/jobs/{id}', scope: 'admin', permission: 'integrations.read', summary: 'Sync job detail with counts', params: IdParam, response: X.SyncJob, errors: [404] },
+  { method: 'get', path: '/v1/admin/integrations/jobs/{id}/rows', scope: 'admin', permission: 'integrations.read', summary: 'Staged rows with action and errors', params: IdParam, query: X.SyncJobRowQuery, response: X.SyncJobRowPage, errors: [400, 404] },
+  { method: 'get', path: '/v1/admin/integrations/jobs/{id}/errors.csv', scope: 'admin', permission: 'integrations.read', summary: 'Download rows with errors (original columns + messages)', params: IdParam, csv: true, errors: [404] },
+  { method: 'post', path: '/v1/admin/integrations/jobs/{id}/commit', scope: 'admin', permission: 'integrations.manage', summary: 'Apply a previewed job (atomic, or partial = valid rows only)', params: IdParam, body: X.CommitJobRequest, response: X.SyncJob, errors: [403, 404, 409] },
+  { method: 'post', path: '/v1/admin/integrations/jobs/{id}/discard', scope: 'admin', permission: 'integrations.manage', summary: 'Discard a previewed job', params: IdParam, response: X.SyncJob, errors: [404, 409] },
+  { method: 'get', path: '/v1/admin/integrations/connections/{id}/records', scope: 'admin', permission: 'integrations.read', summary: 'External ID → product/piece map', params: IdParam, query: X.ExternalRecordQuery, response: X.ExternalRecordPage, errors: [400, 404] },
+  { method: 'get', path: '/v1/admin/integrations/connections/{id}/simulator', scope: 'admin', permission: 'integrations.read', summary: 'Simulator state (test double)', params: IdParam, response: X.SimulatorState, errors: [404] },
+  { method: 'post', path: '/v1/admin/integrations/connections/{id}/simulator/advance', scope: 'admin', permission: 'integrations.manage', summary: 'Advance the simulator one documented change', params: IdParam, response: X.SimulatorState, errors: [404] },
+  { method: 'post', path: '/v1/admin/integrations/connections/{id}/simulator/failures', scope: 'admin', permission: 'integrations.manage', summary: 'Inject simulated outages/timeouts for order export', params: IdParam, body: X.SimulatorFailuresRequest, response: X.SimulatorState, errors: [400, 404] },
+  { method: 'post', path: '/v1/admin/integrations/connections/{id}/outbound/test-order', scope: 'admin', permission: 'integrations.manage', summary: 'Queue a test order export (idempotent by reference)', params: IdParam, body: X.TestOrderRequest, response: X.OutboundCommand, status: 201, errors: [400, 404, 409, 422] },
+  { method: 'get', path: '/v1/admin/integrations/outbound', scope: 'admin', permission: 'integrations.read', summary: 'Outbound commands (order export) and their delivery state', query: X.OutboundListQuery, response: X.OutboundCommandPage, errors: [400] },
+  { method: 'post', path: '/v1/admin/integrations/outbound/{id}/retry', scope: 'admin', permission: 'integrations.manage', summary: 'Retry a failed command (same reference, no duplicate ERP order)', params: IdParam, response: X.OutboundCommand, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/integrations/connections/{id}/reconcile', scope: 'admin', permission: 'integrations.manage', summary: 'Compare the last ERP stock snapshot with current balances', params: IdParam, response: X.ReconcileConnectionResponse, errors: [403, 404] },
+  { method: 'get', path: '/v1/admin/integrations/connections/{id}/discrepancies', scope: 'admin', permission: 'integrations.read', summary: 'Open/resolved discrepancies for a connection', params: IdParam, query: z.object({ status: z.enum(['open', 'resolved']).default('open') }), response: z.object({ items: z.array(I.ReconciliationIssue) }), errors: [404] },
+  { method: 'post', path: '/v1/admin/integrations/discrepancies/{id}/resolve', scope: 'admin', permission: 'reconciliation.resolve', summary: 'Resolve: accept the ERP value (ledger adjustment) or keep ours, with a note', params: IdParam, body: X.ResolveDiscrepancyRequest, response: I.ReconciliationIssue, errors: [400, 403, 404, 409] },
+  // ---- Phase 06: metal rates & pricing ----
+  { method: 'get', path: '/v1/admin/rates/current', scope: 'admin', permission: 'rates.read', summary: 'Current approved rate per purity with freshness and pending proposals', response: P.CurrentRates },
+  { method: 'get', path: '/v1/admin/rates', scope: 'admin', permission: 'rates.read', summary: 'Rate history (proposed, approved, rejected)', query: P.MetalRateListQuery, response: P.MetalRatePage },
+  { method: 'post', path: '/v1/admin/rates', scope: 'admin', permission: 'rates.edit', summary: 'Propose a manual metal rate (needs a second person to approve)', body: P.ProposeRateRequest, response: P.MetalRate, status: 201, errors: [400, 404] },
+  { method: 'get', path: '/v1/admin/rates/sources', scope: 'admin', permission: 'rates.read', summary: 'Rate sources and the provider registry (honest tiers)', response: P.RateSourceList },
+  { method: 'post', path: '/v1/admin/rates/sources', scope: 'admin', permission: 'rates.edit', summary: 'Add a provider source (secret reference only)', body: P.CreateRateSourceRequest, response: P.RateSource, status: 201, errors: [400, 409] },
+  { method: 'post', path: '/v1/admin/rates/sources/{id}/pull', scope: 'admin', permission: 'rates.edit', summary: 'Pull values from a provider adapter as proposals (simulator only in this build)', params: IdParam, body: P.PullRatesRequest, response: P.PullRatesResponse, errors: [404, 409] },
+  { method: 'get', path: '/v1/admin/rates/{id}', scope: 'admin', permission: 'rates.read', summary: 'Metal rate detail', params: IdParam, response: P.MetalRate, errors: [404] },
+  { method: 'post', path: '/v1/admin/rates/{id}/approve', scope: 'admin', permission: 'rates.approve', summary: 'Approve a proposed rate (approver must differ from proposer); publishes it when effective', params: IdParam, body: P.ApproveRateRequest, response: P.MetalRate, errors: [403, 404, 409] },
+  { method: 'post', path: '/v1/admin/rates/{id}/reject', scope: 'admin', permission: 'rates.approve', summary: 'Reject a proposed rate with a reason', params: IdParam, body: P.RejectRateRequest, response: P.MetalRate, errors: [404, 409] },
+  { method: 'get', path: '/v1/admin/pricing/settings', scope: 'admin', permission: 'pricing.read', summary: 'Quote TTL, rate max age, stale policy, rule review', response: P.PricingSettings },
+  { method: 'put', path: '/v1/admin/pricing/settings', scope: 'admin', permission: 'pricing.edit', summary: 'Update pricing settings', body: P.UpdatePricingSettingsRequest, response: P.PricingSettings, errors: [400, 409] },
+  { method: 'get', path: '/v1/admin/pricing/options', scope: 'admin', permission: 'pricing.read', summary: 'Purities, channels, tax rules and currency for pricing forms', response: P.PricingCatalogOptions },
+  { method: 'get', path: '/v1/admin/pricing/tax-rules', scope: 'admin', permission: 'pricing.read', summary: 'Merchant-entered tax rules (pending validation until marked validated)', response: P.TaxRuleList },
+  { method: 'post', path: '/v1/admin/pricing/tax-rules', scope: 'admin', permission: 'pricing.edit', summary: 'Create a tax rule (starts pending validation)', body: P.CreateTaxRuleRequest, response: P.TaxRule, status: 201, errors: [400] },
+  { method: 'patch', path: '/v1/admin/pricing/tax-rules/{id}', scope: 'admin', permission: 'pricing.edit', summary: 'Update or validate a tax rule', params: IdParam, body: P.UpdateTaxRuleRequest, response: P.TaxRule, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/pricing/books', scope: 'admin', permission: 'pricing.read', summary: 'Price books', response: P.PriceBookList },
+  { method: 'post', path: '/v1/admin/pricing/books', scope: 'admin', permission: 'pricing.edit', summary: 'Create a price book', body: P.CreatePriceBookRequest, response: P.PriceBook, status: 201, errors: [400, 409] },
+  { method: 'get', path: '/v1/admin/pricing/books/{id}', scope: 'admin', permission: 'pricing.read', summary: 'Price book detail', params: IdParam, response: P.PriceBook, errors: [404] },
+  { method: 'patch', path: '/v1/admin/pricing/books/{id}', scope: 'admin', permission: 'pricing.edit', summary: 'Update or archive a price book', params: IdParam, body: P.UpdatePriceBookRequest, response: P.PriceBook, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/pricing/books/{id}/list-prices', scope: 'admin', permission: 'pricing.read', summary: 'List prices in a book', params: IdParam, response: P.ListPriceList, errors: [404] },
+  { method: 'put', path: '/v1/admin/pricing/books/{id}/list-prices', scope: 'admin', permission: 'pricing.edit', summary: 'Set or remove list prices (null removes)', params: IdParam, body: P.PutListPricesRequest, response: z.object({ updated: z.number().int(), removed: z.number().int() }), errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/pricing/books/{id}/rules', scope: 'admin', permission: 'pricing.read', summary: 'Rules in a book (by priority)', params: IdParam, response: P.PriceRuleList, errors: [404] },
+  { method: 'post', path: '/v1/admin/pricing/rules', scope: 'admin', permission: 'pricing.edit', summary: 'Create a price rule (starts as draft v1)', body: P.CreatePriceRuleRequest, response: P.PriceRule, status: 201, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/pricing/rules/{id}', scope: 'admin', permission: 'pricing.read', summary: 'Price rule with all versions', params: IdParam, response: P.PriceRule, errors: [404] },
+  { method: 'put', path: '/v1/admin/pricing/rules/{id}/draft', scope: 'admin', permission: 'pricing.edit', summary: 'Save the draft version (creates one from the published version if none)', params: IdParam, body: P.SaveRuleDraftRequest, response: P.PriceRule, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/pricing/rules/{id}/publish', scope: 'admin', permission: 'pricing.publish', summary: 'Publish a draft (conflict check; reviewer must differ from author when review is on)', params: IdParam, body: P.PublishRuleRequest, response: P.PriceRule, errors: [403, 404, 409] },
+  { method: 'post', path: '/v1/admin/pricing/rules/{id}/retire', scope: 'admin', permission: 'pricing.publish', summary: 'Retire a rule', params: IdParam, body: P.RetireRuleRequest, response: P.PriceRule, errors: [404, 409] },
+  { method: 'get', path: '/v1/admin/pricing/items', scope: 'admin', permission: 'pricing.read', summary: 'Find variants and sellable pieces to price (SKU, title, tag)', query: P.PricingItemQuery, response: P.PricingItemResults, errors: [400] },
+  { method: 'post', path: '/v1/admin/pricing/calculate', scope: 'admin', permission: 'pricing.read', summary: 'Explainable price for an item or manual measurements (not stored)', body: P.CalculateRequest, response: P.CalculateResponse, errors: [400, 404, 409, 422] },
+  { method: 'get', path: '/v1/admin/pricing/quotes', scope: 'admin', permission: 'pricing.read', summary: 'Price quotes', query: P.PriceQuoteListQuery, response: P.PriceQuotePage },
+  { method: 'post', path: '/v1/admin/pricing/quotes', scope: 'admin', permission: 'pricing.read', summary: 'Create an immutable, time-limited price quote', body: P.CreateQuoteRequest, response: P.PriceQuote, status: 201, errors: [400, 404, 409, 422] },
+  { method: 'get', path: '/v1/admin/pricing/quotes/{id}', scope: 'admin', permission: 'pricing.read', summary: 'Quote detail with frozen breakdown', params: IdParam, response: P.PriceQuote, errors: [404] },
+  { method: 'post', path: '/v1/admin/pricing/quotes/{id}/revalidate', scope: 'admin', permission: 'pricing.read', summary: 'Re-price with current rates/rules: unchanged, changed (new quote) or unavailable', params: IdParam, response: P.RevalidateQuoteResponse, errors: [404, 409] },
+  { method: 'post', path: '/v1/storefront/pricing-quotes', scope: 'storefront', summary: 'Price quote for published items of the storefront resolved from Host (rate limited)', body: P.StorefrontQuoteRequest, response: P.StorefrontQuote, status: 201, errors: [400, 404, 409, 422, 429] },
+  // ---- Phase 07: orders, quotations, checkout ----
+  { method: 'get', path: '/v1/admin/order-settings', scope: 'admin', permission: 'orders.read', summary: 'Approval threshold, checkout hold, quotation validity, numbering', response: O.OrderSettings },
+  { method: 'put', path: '/v1/admin/order-settings', scope: 'admin', permission: 'settings.manage', summary: 'Update order settings', body: O.UpdateOrderSettingsRequest, response: O.OrderSettings, errors: [400, 409] },
+  { method: 'get', path: '/v1/admin/orders', scope: 'admin', permission: 'orders.read', summary: 'Orders (filter by status, payment, channel, origin, number/contact)', query: O.OrderListQuery, response: O.OrderPage },
+  { method: 'post', path: '/v1/admin/orders', scope: 'admin', permission: 'orders.manage', idempotent: true, summary: 'Staff order on account: server-priced, held, confirmed or sent for approval', body: O.CreateOrderRequest, response: O.Order, status: 201, errors: [400, 404, 409, 422] },
+  { method: 'get', path: '/v1/admin/orders/{id}', scope: 'admin', permission: 'orders.read', summary: 'Order with frozen line snapshots, holds, payments, timeline and ERP exports', params: IdParam, response: O.Order, errors: [404] },
+  { method: 'post', path: '/v1/admin/orders/{id}/approve', scope: 'admin', permission: 'orders.approve', summary: 'Approve an order (approver must differ from creator); commits stock', params: IdParam, body: O.ApproveOrderRequest, response: O.Order, errors: [403, 404, 409] },
+  { method: 'post', path: '/v1/admin/orders/{id}/reject', scope: 'admin', permission: 'orders.approve', summary: 'Reject an order awaiting approval (releases stock)', params: IdParam, body: O.RejectOrderRequest, response: O.Order, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/orders/{id}/cancel', scope: 'admin', permission: 'orders.manage', summary: 'Cancel with compensation (stock released, refund due if paid)', params: IdParam, body: O.CancelOrderRequest, response: O.Order, errors: [404, 409] },
+  { method: 'get', path: '/v1/admin/quotations', scope: 'admin', permission: 'orders.read', summary: 'Sales quotations', query: O.QuotationListQuery, response: O.QuotationPage },
+  { method: 'post', path: '/v1/admin/quotations', scope: 'admin', permission: 'orders.manage', summary: 'Create a draft quotation', body: O.CreateQuotationRequest, response: O.Quotation, status: 201, errors: [400, 404, 422] },
+  { method: 'get', path: '/v1/admin/quotations/{id}', scope: 'admin', permission: 'orders.read', summary: 'Quotation with its frozen price', params: IdParam, response: O.Quotation, errors: [404] },
+  { method: 'patch', path: '/v1/admin/quotations/{id}', scope: 'admin', permission: 'orders.manage', summary: 'Edit a draft quotation', params: IdParam, body: O.UpdateQuotationRequest, response: O.Quotation, errors: [400, 404, 409, 422] },
+  { method: 'post', path: '/v1/admin/quotations/{id}/send', scope: 'admin', permission: 'orders.manage', summary: 'Send: freezes the price until the validity date', params: IdParam, body: O.QuotationActionRequest, response: O.Quotation, errors: [404, 409, 422] },
+  { method: 'post', path: '/v1/admin/quotations/{id}/accept', scope: 'admin', permission: 'orders.manage', summary: 'Record the buyer acceptance (before expiry)', params: IdParam, body: O.AcceptQuotationRequest, response: O.Quotation, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/quotations/{id}/convert', scope: 'admin', permission: 'orders.manage', summary: 'Create the order at the frozen price', params: IdParam, body: O.ConvertQuotationRequest, response: O.Order, status: 201, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/quotations/{id}/cancel', scope: 'admin', permission: 'orders.manage', summary: 'Cancel a quotation', params: IdParam, body: O.CancelQuotationRequest, response: O.Quotation, errors: [404, 409] },
+  { method: 'post', path: '/v1/storefront/carts', scope: 'storefront', summary: 'Create a cart (returns a secret cart token once)', response: O.CreateCartResponse, status: 201, errors: [404, 429] },
+  { method: 'get', path: '/v1/storefront/carts/{id}', scope: 'storefront', summary: 'Cart with a fresh server price (X-Cart-Token)', params: IdParam, response: O.Cart, errors: [404, 409, 422, 429] },
+  { method: 'put', path: '/v1/storefront/carts/{id}/lines', scope: 'storefront', summary: 'Replace cart lines (validated by pricing; X-Cart-Token)', params: IdParam, body: O.PutCartLinesRequest, response: O.Cart, errors: [400, 404, 409, 422, 429] },
+  { method: 'post', path: '/v1/storefront/checkouts', scope: 'storefront', idempotent: true, summary: 'Checkout: re-price (409 PRICE_CHANGED), hold stock, create the order + sandbox payment', body: O.CheckoutRequest, response: O.StorefrontOrder, status: 201, errors: [400, 404, 409, 422, 429] },
+  { method: 'get', path: '/v1/storefront/orders/{id}', scope: 'storefront', summary: 'Order status for the cart that placed it (X-Cart-Token)', params: IdParam, response: O.StorefrontOrder, errors: [404, 429] },
+  { method: 'post', path: '/v1/storefront/orders/{id}/sandbox-payment', scope: 'storefront', summary: 'SANDBOX ONLY: simulate the PSP outcome (signed callback, no real money)', params: IdParam, body: O.SandboxPayRequest, response: O.StorefrontOrder, errors: [403, 404, 409, 429] },
+  { method: 'post', path: '/v1/payments/sandbox/webhook', scope: 'system', summary: 'Sandbox PSP callback (X-Sandbox-Signature HMAC-SHA256, replay protected)', body: O.SandboxWebhook, response: O.WebhookAck, errors: [400, 401, 403, 404, 422] },
 ];
 const SECURITY: Record<Scope, RouteConfig['security']> = {
   auth: [],
@@ -200,7 +293,9 @@ export function buildOpenApiDocument(
     const status = route.status ?? 200;
     responses[status] = route.binary
       ? { description: 'Image bytes', content: { 'image/*': { schema: z.string().openapi({ format: 'binary' }) } } }
-      : route.response
+      : route.csv
+        ? { description: 'CSV file', content: { 'text/csv': { schema: z.string() } } }
+        : route.response
         ? json(route.response)
         : { description: 'No content' };
     const errors = new Set<number>([...(route.errors ?? []), 500]);
@@ -237,7 +332,7 @@ export function buildOpenApiDocument(
     openapi: '3.1.0',
     info: {
       title: 'Universal Commerce OS API',
-      version: '1.0.0-phase03',
+      version: '1.0.0-phase07',
       description:
         'Multi-tenant commerce platform API. Errors use {code,message,details,correlationId}. Decimals are strings; money is {amountMinor,currency}.',
     },

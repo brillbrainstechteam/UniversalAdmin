@@ -64,6 +64,48 @@
       "when": 1792335824374,
       "tag": "0008_inventory_security",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792408826039,
+      "tag": "0009_integrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792408833687,
+      "tag": "0010_integrations_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792420875467,
+      "tag": "0011_pricing",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792420881338,
+      "tag": "0012_pricing_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792426871557,
+      "tag": "0013_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792426877759,
+      "tag": "0014_orders_security",
+      "breakpoints": true
     }
   ]
 }

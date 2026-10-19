@@ -16,9 +16,25 @@ import { StorageService } from './common/storage.service';
 import { CatalogController } from './modules/catalog/catalog.controller';
 import { JewelleryController } from './modules/jewellery/jewellery.controller';
 import { InventoryController } from './modules/inventory/inventory.controller';
+import { ConnectionsService } from './modules/integrations/connections.service';
+import { IntegrationsController } from './modules/integrations/integrations.controller';
+import { SyncService } from './modules/integrations/sync.service';
 import { InventoryQueryService } from './modules/inventory/inventory-query.service';
 import { InventoryService } from './modules/inventory/inventory.service';
 import { JewelleryService } from './modules/jewellery/jewellery.service';
+import { PricingController, StorefrontPricingController } from './modules/pricing/pricing.controller';
+import { PricingService } from './modules/pricing/pricing.service';
+import { CheckoutService } from './modules/orders/checkout.service';
+import {
+  OrdersController,
+  PaymentWebhooksController,
+  StorefrontOrdersController,
+} from './modules/orders/orders.controller';
+import { OrdersService } from './modules/orders/orders.service';
+import { PaymentsService } from './modules/orders/payments.service';
+import { QuotationsService } from './modules/orders/quotations.service';
+import { QuoteService } from './modules/pricing/quote.service';
+import { RatesService } from './modules/pricing/rates.service';
 import { SerialItemsService } from './modules/jewellery/serial-items.service';
 import { CatalogService } from './modules/catalog/catalog.service';
 import { ImportService } from './modules/catalog/import.service';
@@ -69,6 +85,12 @@ export class AppModule {
         StorefrontCatalogController,
         JewelleryController,
         InventoryController,
+        IntegrationsController,
+        PricingController,
+        StorefrontPricingController,
+        OrdersController,
+        StorefrontOrdersController,
+        PaymentWebhooksController,
       ],
       providers: [
         { provide: APP_GUARD, useClass: CsrfGuard },
@@ -97,6 +119,15 @@ export class AppModule {
         SerialItemsService,
         InventoryQueryService,
         InventoryService,
+        ConnectionsService,
+        SyncService,
+        RatesService,
+        PricingService,
+        QuoteService,
+        OrdersService,
+        PaymentsService,
+        CheckoutService,
+        QuotationsService,
       ],
     };
   }

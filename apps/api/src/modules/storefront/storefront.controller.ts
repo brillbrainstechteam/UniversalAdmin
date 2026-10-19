@@ -1,5 +1,5 @@
 import { Controller, Get, Inject, Injectable, Req } from '@nestjs/common';
-import type { ChannelType, StorefrontConfig, ThemeTokens } from '@uc/contracts';
+import type { ChannelType, PresetKey, StorefrontConfig, ThemeTokens } from '@uc/contracts';
 import { channelDomains, channels, tenants } from '@uc/db';
 import { and, eq } from 'drizzle-orm';
 import { timingSafeEqual } from 'node:crypto';
@@ -42,7 +42,7 @@ export class StorefrontResolver {
   /** Internal ids for the resolved storefront (never returned to clients). */
   async resolveContext(
     hostname: string,
-  ): Promise<{ tenantId: string; channelId: string; config: StorefrontConfig }> {
+  ): Promise<{ tenantId: string; channelId: string; preset: PresetKey; config: StorefrontConfig }> {
     const notFound = new AppError(404, 'STOREFRONT_NOT_FOUND', 'No storefront is configured for this domain');
     if (!HOST_RE.test(hostname)) throw notFound;
     // System context: the hostname → tenant mapping is by definition cross-tenant.
@@ -75,7 +75,12 @@ export class StorefrontResolver {
       locale: row.tenant.defaultLocale,
       timezone: row.tenant.timezone,
     };
-    return { tenantId: row.tenant.id, channelId: row.channel.id, config };
+    return {
+      tenantId: row.tenant.id,
+      channelId: row.channel.id,
+      preset: row.tenant.preset as PresetKey,
+      config,
+    };
   }
 }
 

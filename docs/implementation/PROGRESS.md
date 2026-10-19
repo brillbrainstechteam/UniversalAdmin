@@ -6,9 +6,9 @@
 | 02 CATALOG | approved, pushed (c336aee) | approved | 171 unit/integration + 13 E2E passing; see [phase-02-CATALOG.md](phase-02-CATALOG.md) |
 | 03 JEWELLERY | approved, pushed (0168b35) | approved | 211 unit/integration + 16 E2E passing; see [phase-03-JEWELLERY.md](phase-03-JEWELLERY.md) |
 | 04 INVENTORY | approved | approved | 234 unit/integration + 19 E2E passing; see [phase-04-INVENTORY.md](phase-04-INVENTORY.md) |
-| 05 CONNECTORS | not started | — | |
-| 06 PRICING | not started | — | |
-| 07 ORDERS | not started | — | |
+| 05 CONNECTORS | implemented; user asked to advance | advanced (not committed) | 257 unit/integration + 21 E2E at the gate; see [phase-05-CONNECTORS.md](phase-05-CONNECTORS.md) |
+| 06 PRICING | implemented, awaiting review | pending | 294 unit/integration + 25 E2E passing; see [phase-06-PRICING.md](phase-06-PRICING.md) |
+| 07 ORDERS | implemented, awaiting review | pending | 307 unit/integration + 28 E2E passing; see [phase-07-ORDERS.md](phase-07-ORDERS.md) |
 | 08 B2B | not started | — | |
 | 09 B2C | not started | — | |
 | 10 CMS-GROWTH | not started | — | |
@@ -26,3 +26,7 @@
 - 2026-10-18 — Phase 03 committed (`0168b35`) and pushed at the user's request.
 - 2026-10-18 — Phase 04 implemented. format/lint/typecheck/build/test (234)/e2e (19)/audit all exit 0. 3 E2E harness issues fixed (no product defects surfaced). Not committed. Stopped for review before Phase 05.
 - 2026-10-19 — Phase 04 approved; committed and pushed at the user's request.
+- 2026-10-19 — Phase 05 implemented. format/lint/typecheck/build/test (257)/e2e (21)/audit all exit 0. 2 defects found by tests and fixed. Vendor connectors blocked on third parties (docs/integrations/BLOCKED-DEPENDENCIES.md). Not committed. Stopped for review before Phase 06.
+- 2026-10-19 — Phase 05 gates re-run (all green). User asked to advance through the remaining phases. Phase 05 pending items reviewed (phase-05-CONNECTORS.md → "Pending-items review"); the only one doable without third parties — slow large-import commit (27 s / 1,000 rows) — fixed to ~4 s (ADR-020). 257 tests still pass. Starting Phase 06.
+- 2026-10-19 — Phase 06 implemented. format/lint/typecheck/build/test (294)/e2e (25)/audit all exit 0. Live rate feed blocked (licence + credentials); simulator labelled. Not committed. Continuing to Phase 07 at the user's request.
+- 2026-10-19 — Phase 07 implemented. format/lint/typecheck/build/test (307)/e2e (28)/audit all exit 0. 4 defects found by tests and fixed. Phase 05 carried P0 (ERP double subtract) fixed. Payment gateway blocked (sandbox only). Not committed.

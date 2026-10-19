@@ -2,11 +2,18 @@ import { sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool, types } from 'pg';
 import * as catalogSchema from './catalog-schema';
+import * as integrationsSchema from './integrations-schema';
 import * as inventorySchema from './inventory-schema';
 import * as jewellerySchema from './jewellery-schema';
 import * as coreSchema from './schema';
 
-const schema = { ...coreSchema, ...catalogSchema, ...jewellerySchema, ...inventorySchema };
+const schema = {
+  ...coreSchema,
+  ...catalogSchema,
+  ...jewellerySchema,
+  ...inventorySchema,
+  ...integrationsSchema,
+};
 
 // NUMERIC (1700) and INT8 (20) stay strings: never coerce money/weights to JS floats.
 types.setTypeParser(1700, (v) => v);
@@ -15,7 +22,8 @@ types.setTypeParser(20, (v) => v);
 export type Schema = typeof coreSchema &
   typeof catalogSchema &
   typeof jewellerySchema &
-  typeof inventorySchema;
+  typeof inventorySchema &
+  typeof integrationsSchema;
 export type Db = NodePgDatabase<Schema>;
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 /** Anything that can run queries: the pool-backed db or an open transaction. */

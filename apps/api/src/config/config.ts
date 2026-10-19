@@ -26,6 +26,15 @@ const ConfigSchema = z.object({
   S3_ACCESS_KEY_ID: z.string().default('uc_s3_dev'),
   S3_SECRET_ACCESS_KEY: z.string().default('uc_s3_dev_secret'),
   S3_AUTO_CREATE_BUCKET: bool.default('false'),
+  // Sign-in throttling per 10-minute window (DB lockout still applies). Raise only for automated test runs.
+  LOGIN_RATE_LIMIT_PER_IP: z.coerce.number().int().min(1).default(30),
+  LOGIN_RATE_LIMIT_PER_EMAIL: z.coerce.number().int().min(1).default(15),
+  // Phase 07 sandbox payment gateway (test double, never real money). Refused in production.
+  PAYMENTS_SANDBOX_ENABLED: bool.default('true'),
+  PAYMENTS_SANDBOX_SECRET: z
+    .string()
+    .min(32, 'PAYMENTS_SANDBOX_SECRET must be at least 32 characters')
+    .default('dev-only-sandbox-payment-signing-secret-0123456789'),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema> & {
@@ -51,11 +60,20 @@ export function loadConfig(
   if (parsed.data.NODE_ENV === 'production' && !parsed.data.COOKIE_SECURE) {
     throw new Error('COOKIE_SECURE must be true in production');
   }
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.PAYMENTS_SANDBOX_ENABLED) {
+    throw new Error(
+      'PAYMENTS_SANDBOX_ENABLED must be false in production (the sandbox gateway takes no real payments)',
+    );
+  }
   return {
     ...parsed.data,
     session: { merchantTtlMs: 12 * 3600_000, platformTtlMs: 8 * 3600_000, idleTimeoutMs: 2 * 3600_000 },
     lockout: { maxFailures: 5, lockMs: 15 * 60_000 },
-    loginRateLimit: { perIp: 30, perEmail: 15, windowSeconds: 600 },
+    loginRateLimit: {
+      perIp: parsed.data.LOGIN_RATE_LIMIT_PER_IP,
+      perEmail: parsed.data.LOGIN_RATE_LIMIT_PER_EMAIL,
+      windowSeconds: 600,
+    },
     invitationTtlMs: 7 * 24 * 3600_000,
     ...overrides,
   };

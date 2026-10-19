@@ -31,6 +31,11 @@ const UNIQUE_FIELDS: Record<string, string> = {
   stock_documents_reference_uq: 'reference',
   transfers_number_uq: 'number',
   reservations_serial_active_uq: 'serialItemId',
+  connections_tenant_name_uq: 'name',
+  field_mappings_version_uq: 'version',
+  rate_sources_tenant_name_uq: 'name',
+  price_books_tenant_name_uq: 'name',
+  price_rules_book_name_uq: 'name',
 };
 
 interface PgError {
@@ -94,6 +99,13 @@ export class ErrorFilter implements ExceptionFilter {
       // Database backstop for oversell / negative stock (the engine normally rejects first).
       status = 409;
       body = { code: 'INSUFFICIENT_STOCK', message: 'Not enough stock for this change' };
+    } else if (pg?.code === '23514' && pg.constraint === 'metal_rates_four_eyes_ck') {
+      // Database backstop for maker-checker on metal rates (the service normally rejects first).
+      status = 403;
+      body = {
+        code: 'SEPARATION_OF_DUTIES',
+        message: 'A rate must be approved by someone other than its proposer',
+      };
     } else if (pg?.code === '23503') {
       status = 422;
       body = { code: 'VALIDATION_FAILED', message: 'Referenced record does not exist in this tenant' };

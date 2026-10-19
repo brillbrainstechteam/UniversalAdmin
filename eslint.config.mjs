@@ -60,6 +60,9 @@ export default tseslint.config(
       'packages/contracts/src/stock-math.ts',
       'packages/contracts/src/dto/inventory.ts',
       'packages/db/src/inventory.ts',
+      'packages/contracts/src/pricing-engine.ts',
+      'packages/contracts/src/dto/pricing.ts',
+      'apps/api/src/modules/pricing/**',
     ],
     rules: {
       'no-restricted-syntax': [

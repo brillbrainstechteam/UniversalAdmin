@@ -1,6 +1,8 @@
 import type { ReconciliationIssue, Reservation, StockMovement, Transfer } from '@uc/contracts';
 import { qty } from '@uc/contracts';
 import {
+  connections,
+  externalRecords,
   locations,
   reconciliationIssues,
   reservations,
@@ -13,7 +15,7 @@ import {
   products,
   type Tx,
 } from '@uc/db';
-import { and, asc, desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { AppError, Errors } from '../../common/errors';
 import { iso } from '../../common/mappers';
@@ -280,4 +282,41 @@ export function toIssue(row: IssueJoin): ReconciliationIssue {
     resolvedAt: i.resolvedAt ? iso(i.resolvedAt) : null,
     createdAt: iso(i.createdAt),
   };
+}
+
+/**
+ * Field ownership (ADR-019): stock of a variant linked to an active connection whose stock owner is the ERP can only
+ * change through ERP snapshots (and holds). Manual receipts, adjustments, transfers and stocktakes are refused.
+ */
+export async function assertStockNotErpOwned(
+  tx: Tx,
+  tenantId: string,
+  variantIds: readonly string[],
+): Promise<void> {
+  const ids = [...new Set(variantIds)];
+  if (!ids.length) return;
+  const rows = await tx
+    .select({ sku: variants.sku, connection: connections.name })
+    .from(externalRecords)
+    .innerJoin(connections, eq(connections.id, externalRecords.connectionId))
+    .innerJoin(variants, eq(variants.id, externalRecords.internalId))
+    .where(
+      and(
+        eq(externalRecords.tenantId, tenantId),
+        eq(externalRecords.internalType, 'variant'),
+        inArray(externalRecords.internalId, ids),
+        isNull(externalRecords.deletedAt),
+        eq(connections.status, 'active'),
+        sql`${connections.ownership}->>'stock' = 'erp'`,
+      ),
+    )
+    .limit(10);
+  if (rows.length) {
+    throw new AppError(
+      409,
+      'FIELD_OWNED_BY_ERP',
+      `Stock of ${rows.map((r) => r.sku).join(', ')} is owned by the connection "${rows[0]!.connection}". Change it in the source system and sync, or change field ownership on the connection.`,
+      { skus: rows.map((r) => r.sku), connection: rows[0]!.connection },
+    );
+  }
 }

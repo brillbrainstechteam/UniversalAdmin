@@ -3,6 +3,12 @@
   "configurations": [
     { "name": "api", "runtimeExecutable": "pnpm", "runtimeArgs": ["dev:api"], "port": 4100 },
     { "name": "merchant-admin", "runtimeExecutable": "pnpm", "runtimeArgs": ["dev:merchant"], "port": 3100 },
-    { "name": "platform-admin", "runtimeExecutable": "pnpm", "runtimeArgs": ["dev:platform"], "port": 3101 }
+    { "name": "platform-admin", "runtimeExecutable": "pnpm", "runtimeArgs": ["dev:platform"], "port": 3101 },
+    {
+      "name": "dg-website",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "F:/DGTraining/website", "run", "dev", "--", "--port", "4321"],
+      "port": 4321
+    }
   ]
 }

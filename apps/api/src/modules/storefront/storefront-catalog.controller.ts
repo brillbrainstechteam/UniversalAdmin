@@ -186,6 +186,7 @@ export class StorefrontCatalogService {
         seo: { title: p.seoTitle ?? p.title, description: p.seoDescription },
         images: images.map((i) => ({ url: mediaUrl(i.id), altText: i.altText || p.title })),
         variants: vs.map((v) => ({
+          id: v.id,
           sku: v.sku,
           title: v.title,
           optionValues: v.optionValues as Record<string, string>,

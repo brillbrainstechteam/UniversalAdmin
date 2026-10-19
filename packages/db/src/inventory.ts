@@ -11,7 +11,7 @@ import {
   type ErrorCode,
   type StockUnit,
 } from '@uc/contracts';
-import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte, sql, type SQL } from 'drizzle-orm';
 import type { Tx } from './client';
 import {
   channelStockLocations,
@@ -124,6 +124,9 @@ export interface PostInput {
   event?: boolean;
 }
 
+/** Balance keys per set-based statement (3 bind parameters each in the lock query). */
+const BALANCE_CHUNK = 1000;
+
 const lineKey = (l: { variantId: string; locationId: string; condition: string }) =>
   `${l.variantId}|${l.locationId}|${l.condition}`;
 
@@ -172,61 +175,84 @@ export async function postMovements(tx: Tx, input: PostInput): Promise<MovementR
     });
   }
   const shortages: Record<string, string>[] = [];
-  for (const key of [...totals.keys()].sort()) {
-    const t = totals.get(key)!;
-    if (qtyIsZero(t.onHand) && qtyIsZero(t.reserved) && qtyIsZero(t.committed)) continue;
+  const keyed = [...totals.keys()]
+    .sort()
+    .map((k) => totals.get(k)!)
+    .filter((t) => !(qtyIsZero(t.onHand) && qtyIsZero(t.reserved) && qtyIsZero(t.committed)));
+  // Set-based in chunks: create missing balance rows, lock them in global key order (uuid order equals the
+  // lowercase-hex string order of lineKey; condition compared bytewise), validate, then one UPDATE per chunk.
+  for (let i = 0; i < keyed.length; i += BALANCE_CHUNK) {
+    const chunk = keyed.slice(i, i + BALANCE_CHUNK);
     await tx
       .insert(stockBalances)
-      .values({
-        tenantId: input.tenantId,
-        variantId: t.variantId,
-        locationId: t.locationId,
-        condition: t.condition,
-      })
+      .values(
+        chunk.map((t) => ({
+          tenantId: input.tenantId,
+          variantId: t.variantId,
+          locationId: t.locationId,
+          condition: t.condition,
+        })),
+      )
       .onConflictDoNothing();
-    const where = and(
-      eq(stockBalances.tenantId, input.tenantId),
-      eq(stockBalances.variantId, t.variantId),
-      eq(stockBalances.locationId, t.locationId),
-      eq(stockBalances.condition, t.condition),
-    );
-    const [bal] = await tx.select().from(stockBalances).where(where).for('update');
-    if (!bal) throw new Error('balance row missing after upsert');
-    const onHand = qtyAdd(bal.onHand, t.onHand);
-    const reserved = qtyAdd(bal.reserved, t.reserved);
-    const committed = qtyAdd(bal.committed, t.committed);
-    const holdsOutsideSellable =
-      t.condition !== 'sellable' && (!qtyIsZero(reserved) || !qtyIsZero(committed));
-    if (
-      qtyCmp(onHand, '0') < 0 ||
-      qtyCmp(reserved, '0') < 0 ||
-      qtyCmp(committed, '0') < 0 ||
-      qtyCmp(onHand, qtyAdd(reserved, committed)) < 0 ||
-      holdsOutsideSellable
-    ) {
-      shortages.push({
-        variantId: t.variantId,
-        locationId: t.locationId,
-        condition: t.condition,
-        ...(t.label ? { item: t.label } : {}),
-        onHand: bal.onHand,
-        reserved: bal.reserved,
-        committed: bal.committed,
-        available: qtyMax0(qtySub(bal.onHand, qtyAdd(bal.reserved, bal.committed))),
-        requestedChange: t.onHand,
-      });
-      continue;
+    const locked = await tx
+      .select()
+      .from(stockBalances)
+      .where(
+        and(
+          eq(stockBalances.tenantId, input.tenantId),
+          sql`(${stockBalances.variantId}, ${stockBalances.locationId}, ${stockBalances.condition}) in (${sql.join(
+            chunk.map((t) => sql`(${t.variantId}::uuid, ${t.locationId}::uuid, ${t.condition}::text)`),
+            sql`, `,
+          )})`,
+        ),
+      )
+      .orderBy(
+        asc(stockBalances.variantId),
+        asc(stockBalances.locationId),
+        sql`${stockBalances.condition} collate "C"`,
+      )
+      .for('update');
+    const byKey = new Map(locked.map((b) => [lineKey(b), b]));
+    const updates: SQL[] = [];
+    for (const t of chunk) {
+      const bal = byKey.get(lineKey(t));
+      if (!bal) throw new Error('balance row missing after upsert');
+      const onHand = qtyAdd(bal.onHand, t.onHand);
+      const reserved = qtyAdd(bal.reserved, t.reserved);
+      const committed = qtyAdd(bal.committed, t.committed);
+      const holdsOutsideSellable =
+        t.condition !== 'sellable' && (!qtyIsZero(reserved) || !qtyIsZero(committed));
+      if (
+        qtyCmp(onHand, '0') < 0 ||
+        qtyCmp(reserved, '0') < 0 ||
+        qtyCmp(committed, '0') < 0 ||
+        qtyCmp(onHand, qtyAdd(reserved, committed)) < 0 ||
+        holdsOutsideSellable
+      ) {
+        shortages.push({
+          variantId: t.variantId,
+          locationId: t.locationId,
+          condition: t.condition,
+          ...(t.label ? { item: t.label } : {}),
+          onHand: bal.onHand,
+          reserved: bal.reserved,
+          committed: bal.committed,
+          available: qtyMax0(qtySub(bal.onHand, qtyAdd(bal.reserved, bal.committed))),
+          requestedChange: t.onHand,
+        });
+        continue;
+      }
+      updates.push(
+        sql`(${bal.id}::uuid, ${t.onHand}::numeric, ${t.reserved}::numeric, ${t.committed}::numeric)`,
+      );
     }
-    await tx
-      .update(stockBalances)
-      .set({
-        onHand: sql`${stockBalances.onHand} + ${t.onHand}::numeric`,
-        reserved: sql`${stockBalances.reserved} + ${t.reserved}::numeric`,
-        committed: sql`${stockBalances.committed} + ${t.committed}::numeric`,
-        version: sql`${stockBalances.version} + 1`,
-        updatedAt: new Date(),
-      })
-      .where(where);
+    if (shortages.length || !updates.length) continue;
+    await tx.execute(sql`
+      update stock_balances b
+         set on_hand = b.on_hand + v.on_hand, reserved = b.reserved + v.reserved,
+             committed = b.committed + v.committed, version = b.version + 1, updated_at = ${new Date()}
+        from (values ${sql.join(updates, sql`, `)}) as v(id, on_hand, reserved, committed)
+       where b.tenant_id = ${input.tenantId} and b.id = v.id`);
   }
   if (shortages.length) {
     throw new InventoryError(
@@ -777,6 +803,7 @@ export async function openIssue(
   tx: Tx,
   input: {
     tenantId: string;
+    domain?: 'inventory' | 'integration';
     kind: IssueKind;
     severity: 'info' | 'warning' | 'critical';
     variantId?: string | null;
@@ -788,7 +815,7 @@ export async function openIssue(
 ): Promise<string | null> {
   const inserted = await tx.execute<{ id: string }>(sql`
     insert into reconciliation_issues (tenant_id, domain, kind, severity, variant_id, location_id, details, dedupe_key)
-    values (${input.tenantId}, 'inventory', ${input.kind}, ${input.severity}, ${input.variantId ?? null},
+    values (${input.tenantId}, ${input.domain ?? 'inventory'}, ${input.kind}, ${input.severity}, ${input.variantId ?? null},
             ${input.locationId ?? null}, ${JSON.stringify(input.details)}::jsonb, ${input.dedupeKey})
     on conflict (tenant_id, dedupe_key) where status = 'open' do nothing
     returning id`);
@@ -802,7 +829,7 @@ export async function openIssue(
       correlationId: input.correlationId ?? null,
       payload: {
         issueId: id,
-        domain: 'inventory',
+        domain: input.domain ?? 'inventory',
         kind: input.kind,
         variantId: input.variantId ?? null,
         locationId: input.locationId ?? null,

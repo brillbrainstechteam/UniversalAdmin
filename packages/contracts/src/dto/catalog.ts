@@ -586,6 +586,8 @@ export const StorefrontProduct = z
     images: z.array(StorefrontImage),
     variants: z.array(
       z.object({
+        /** Used to add the variant to a cart (Phase 07). */
+        id: Uuid,
         sku: z.string(),
         title: z.string(),
         optionValues: z.record(z.string()),

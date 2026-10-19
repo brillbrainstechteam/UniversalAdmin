@@ -5,6 +5,8 @@ import { writeAudit } from './audit';
 import { hashPassword } from './crypto';
 import { provisionTenantRecords, type ProvisionTenantInput } from './provisioning';
 import { DEMO_CATALOG, seedDemoCatalog } from './seed-catalog';
+import { seedDemoSimulatorConnection } from './seed-integrations';
+import { seedDemoPricing } from './seed-pricing';
 import { DEMO_INVENTORY, seedDemoInventory } from './seed-inventory';
 import { DEMO_JEWELLERY, seedDemoJewellery } from './seed-jewellery';
 import {
@@ -70,6 +72,7 @@ export const DEMO = {
     aurumOwner: 'owner@aurum.demo',
     aurumViewer: 'viewer@aurum.demo',
     aurumStock: 'stock@aurum.demo',
+    aurumRates: 'rates@aurum.demo',
     lumiereOwner: 'owner@lumiere.demo',
     northwindOwner: 'owner@northwind.demo',
     multi: 'multi@demo.local',
@@ -208,6 +211,12 @@ export async function seedDemo(db: Db, password: string): Promise<SeedResult> {
       aurumOwner: await createUser(tx, DEMO.users.aurumOwner, 'Asha Aurum (demo owner)', passwordHash),
       aurumViewer: await createUser(tx, DEMO.users.aurumViewer, 'Vikram Viewer (demo)', passwordHash),
       aurumStock: await createUser(tx, DEMO.users.aurumStock, 'Sana Stock (demo, Mumbai only)', passwordHash),
+      aurumRates: await createUser(
+        tx,
+        DEMO.users.aurumRates,
+        'Ravi Rates (demo rate approver)',
+        passwordHash,
+      ),
       lumiereOwner: await createUser(tx, DEMO.users.lumiereOwner, 'Leela Lumière (demo owner)', passwordHash),
       northwindOwner: await createUser(
         tx,
@@ -227,6 +236,7 @@ export async function seedDemo(db: Db, password: string): Promise<SeedResult> {
       [aurum.rolesByKey.inventory_operator!.id],
       [mumbai!.id],
     );
+    await addMember(tx, aurum.tenant.id, u.aurumRates, [aurum.rolesByKey.rate_approver!.id]);
     await addMember(tx, aurum.tenant.id, u.multi, [aurum.rolesByKey.catalog_editor!.id]);
     await addMember(tx, lumiere.tenant.id, u.lumiereOwner, [lumiere.rolesByKey.owner!.id]);
     await addMember(tx, northwind.tenant.id, u.northwindOwner, [northwind.rolesByKey.owner!.id]);
@@ -253,6 +263,29 @@ export async function seedDemo(db: Db, password: string): Promise<SeedResult> {
       { main: northwind.locationId },
       DEMO_INVENTORY.northwind,
     );
+    await seedDemoSimulatorConnection(tx, aurum.tenant.id);
+    await seedDemoPricing(tx, {
+      tenantId: aurum.tenant.id,
+      currency: 'INR',
+      metal: true,
+      makerId: u.aurumOwner,
+      checkerId: u.aurumRates,
+    });
+    await seedDemoPricing(tx, {
+      tenantId: lumiere.tenant.id,
+      currency: 'INR',
+      metal: true,
+      makerId: null,
+      checkerId: u.lumiereOwner,
+    });
+    await seedDemoPricing(tx, {
+      tenantId: northwind.tenant.id,
+      currency: 'GBP',
+      metal: false,
+      makerId: null,
+      checkerId: u.northwindOwner,
+      listPrices: { 'NW-TOTE-NATURAL': '18.00', 'NW-TOTE-NAVY': '18.00', 'NW-MUG-01': '9.50' },
+    });
 
     return {
       tenantIds: { aurum: aurum.tenant.id, lumiere: lumiere.tenant.id, northwind: northwind.tenant.id },

@@ -17,6 +17,9 @@ const apiEnv = {
   LOG_LEVEL: 'warn',
   S3_BUCKET: 'uc-e2e-media',
   S3_AUTO_CREATE_BUCKET: 'true',
+  // The suite signs in many times from one IP; throttling itself is covered by API tests.
+  LOGIN_RATE_LIMIT_PER_IP: '1000',
+  LOGIN_RATE_LIMIT_PER_EMAIL: '1000',
 };
 
 export default defineConfig({

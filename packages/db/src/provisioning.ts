@@ -8,6 +8,8 @@ import {
 import { eq } from 'drizzle-orm';
 import type { Tx } from './client';
 import { stockSettings } from './inventory-schema';
+import { orderSettings } from './orders-schema';
+import { pricingSettings, rateSources } from './pricing-schema';
 import { jewellerySettings, purityDefinitions } from './jewellery-schema';
 import { channels, locations, roles, stores, tenants } from './schema';
 
@@ -150,6 +152,9 @@ export async function provisionTenantRecords(
   // confirmed by the merchant before computed fine weights are relied on.
   await tx.insert(jewellerySettings).values({ tenantId: tenant.id });
   await tx.insert(stockSettings).values({ tenantId: tenant.id });
+  await tx.insert(pricingSettings).values({ tenantId: tenant.id });
+  await tx.insert(orderSettings).values({ tenantId: tenant.id });
+  await tx.insert(rateSources).values({ tenantId: tenant.id, name: 'Manual entry', kind: 'manual' });
   await tx
     .insert(purityDefinitions)
     .values(

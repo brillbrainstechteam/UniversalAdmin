@@ -476,11 +476,11 @@ export type CreateStockCountRequest = z.infer<typeof CreateStockCountRequest>;
 
 // ---------------------------------------------------------------- reconciliation
 
-export const IssueKind = z.enum(['ledger_balance_mismatch', 'stale_snapshot', 'stocktake_variance', 'serial_state_mismatch']);
+export const IssueKind = z.enum(['ledger_balance_mismatch', 'stale_snapshot', 'stocktake_variance', 'serial_state_mismatch', 'erp_stock_mismatch', 'erp_record_deleted', 'erp_piece_conflict']);
 export const ReconciliationIssue = z
   .object({
     id: Uuid,
-    domain: z.literal('inventory'),
+    domain: z.enum(['inventory', 'integration']),
     kind: IssueKind,
     severity: z.enum(['info', 'warning', 'critical']),
     variant: z.object({ id: Uuid, sku: z.string() }).nullable(),

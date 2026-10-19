@@ -69,6 +69,7 @@ import type { AuthState, RequestMeta, TenantState } from '../../common/request';
 import { DbService } from '../../db/db.service';
 import {
   assertScope,
+  assertStockNotErpOwned,
   inScope,
   issueQuery,
   loadReservation,
@@ -354,6 +355,11 @@ export class InventoryService {
     requireInventory(ctx);
     return this.db.tenant(ctx.tenantId, async (tx) => {
       const loc = await usableLocation(tx, ctx, input.locationId);
+      await assertStockNotErpOwned(
+        tx,
+        ctx.tenantId,
+        input.lines.map((l) => l.variantId),
+      );
       const lines: MovementLine[] = [];
       const pieceIds: string[] = [];
       for (const [i, line] of input.lines.entries()) {
@@ -458,6 +464,11 @@ export class InventoryService {
     requireInventory(ctx);
     return this.db.tenant(ctx.tenantId, async (tx) => {
       const loc = await usableLocation(tx, ctx, input.locationId);
+      await assertStockNotErpOwned(
+        tx,
+        ctx.tenantId,
+        input.lines.map((l) => l.variantId),
+      );
       const lines: MovementLine[] = [];
       for (const [i, line] of input.lines.entries()) {
         const v = await this.variantInfo(tx, ctx, line.variantId, `lines.${i}.variantId`);
@@ -735,6 +746,11 @@ export class InventoryService {
     requireInventory(ctx);
     return this.db.tenant(ctx.tenantId, async (tx) => {
       const from = await usableLocation(tx, ctx, input.fromLocationId, 'fromLocationId');
+      await assertStockNotErpOwned(
+        tx,
+        ctx.tenantId,
+        input.lines.map((l) => l.variantId),
+      );
       const [to] = await tx
         .select()
         .from(locations)
@@ -984,6 +1000,11 @@ export class InventoryService {
       throw invalid('asOf', 'The count time cannot be in the future');
     return this.db.tenant(ctx.tenantId, async (tx) => {
       const loc = await usableLocation(tx, ctx, input.locationId);
+      await assertStockNotErpOwned(
+        tx,
+        ctx.tenantId,
+        input.lines.map((l) => l.variantId),
+      );
       const seen = new Set<string>();
       const infos: VariantInfo[] = [];
       for (const [i, line] of input.lines.entries()) {

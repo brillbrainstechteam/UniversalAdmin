@@ -93,3 +93,28 @@ All endpoints need the `inventory` feature. Location-bound actions require the l
 Phase 03 change: retiring a serialized item (or rejecting its review) now requires stock state `not_received` or `written_off`.
 System roles (data migration 0008): owner, admin, inventory operator and sales rep gain `inventory.reserve`; sales rep gains `inventory.read`.
 Worker (no HTTP): expires due holds every 15 s and reconciles every 10 min across tenants.
+
+## Phase 05 — integrations
+
+All endpoints need the `integrations` feature. Imports, commits, reconciliation and discrepancy resolution are refused for location-scoped members (they affect every location).
+
+| Endpoint | Permission | Notes / guards | Audit action |
+|---|---|---|---|
+| GET /v1/admin/integrations/connectors, connections[/{id}], connections/{id}/mappings, jobs[/{id}], jobs/{id}/rows, jobs/{id}/errors.csv, connections/{id}/records, connections/{id}/simulator, outbound, connections/{id}/discrepancies | integrations.read | tenant-scoped; CSV export neutralises formulas | — |
+| POST /v1/admin/integrations/mappings/preview | integrations.read | writes nothing | — |
+| PUT /v1/admin/integrations/connectors/{key}/discovery | integrations.manage | blocked connectors only; `version` | connector.discovery_updated |
+| POST /v1/admin/integrations/connections | integrations.manage | available connectors only (409 CONNECTOR_UNAVAILABLE); credential reference only | connection.created |
+| PATCH /v1/admin/integrations/connections/{id} | integrations.manage | `version`; reason for ownership changes and disconnect; disconnected is final | connection.updated / connection.disconnected |
+| POST /v1/admin/integrations/connections/{id}/test | integrations.manage | | — |
+| POST /v1/admin/integrations/connections/{id}/mappings | integrations.manage | complete, consistent rules (MAPPING_INVALID); new version becomes active | connection.mapping_published |
+| POST /v1/admin/integrations/connections/{id}/jobs/file, /jobs/pull | integrations.manage | active connection; file ≤ 2.4 MB, ≤ 5,000 rows (FILE_FORMAT_INVALID) | integration.import_previewed |
+| POST /v1/admin/integrations/jobs/{id}/commit | integrations.manage | previewed only; atomic refused with errors (IMPORT_HAS_ERRORS) | integration.import_committed (+ SyncJobCompleted, InventorySnapshotReceived) |
+| POST /v1/admin/integrations/jobs/{id}/discard | integrations.manage | previewed only | integration.import_discarded |
+| POST /v1/admin/integrations/connections/{id}/simulator/advance, /failures | integrations.manage | simulator connections only | simulator.advanced / simulator.failures_set |
+| POST /v1/admin/integrations/connections/{id}/outbound/test-order | integrations.manage | connector must push orders; same reference + same lines replays (200), different lines 422 | outbound.test_order_queued (+ OrderExportRequested) |
+| POST /v1/admin/integrations/outbound/{id}/retry | integrations.manage | failed only; same reference | outbound.retried |
+| POST /v1/admin/integrations/connections/{id}/reconcile | integrations.manage | | integration.reconciled (+ ReconciliationIssueOpened) |
+| POST /v1/admin/integrations/discrepancies/{id}/resolve | reconciliation.resolve | accept_erp only for stock mismatches (ledger adjustment); note required | integration.discrepancy_resolved (+ ReconciliationIssueResolved) |
+
+Inventory change: receipts, adjustments, transfers and stocktakes refuse variants whose stock is owned by an active ERP connection (409 FIELD_OWNED_BY_ERP).
+Worker (no HTTP): relays ERP order exports every 5 s (OrderExportAcknowledged / OrderExportFailed).

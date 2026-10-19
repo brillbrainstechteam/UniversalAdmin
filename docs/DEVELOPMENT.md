@@ -28,6 +28,7 @@ pnpm dev:platform   # http://localhost:3101
 | owner@aurum.demo | merchant admin | Aurum Wholesale (B2B jewellery) — owner |
 | viewer@aurum.demo | merchant admin | Aurum — viewer (read-only; demonstrates permission denial) |
 | stock@aurum.demo | merchant admin | Aurum — inventory operator scoped to Mumbai branch |
+| rates@aurum.demo | merchant admin | Aurum — rate approver (approves rates proposed by others; publishes price rules) |
 | owner@lumiere.demo | merchant admin | Lumière Fine (B2C jewellery) — owner |
 | owner@northwind.demo | merchant admin | Northwind General (general commerce, no jewellery) — owner |
 | multi@demo.local | merchant admin | Aurum catalog editor + Northwind admin (tenant picker) |
@@ -56,3 +57,17 @@ Tests never touch `uc_dev`. Redis logical DBs: 0 dev, 1 API tests, 2 worker test
 
 ## Ports
 5440 Postgres · 6390 Redis · 9010 object store · 4100 API · 3100 merchant admin · 3101 platform admin.
+
+## Pricing demo (Phase 06)
+Aurum and Lumière have DEMO metal rates (illustrative, not market data) approved by a second person, and a published
+gold rule; Northwind has GBP list prices. Try: Pricing & Metal Rates → Calculator → search `AUR-T-0001`. Propose a
+rate as `owner@aurum.demo`, approve it as `rates@aurum.demo`.
+
+Storefront quote: `POST /v1/storefront/pricing-quotes` with `Host: northwind.localhost` and body
+`{"lines":[{"variantId":"<variant id>"}]}`.
+
+## Orders demo (Phase 07)
+Orders → New order (staff order on account), Orders → Quotations (send freezes the price), Orders → Settings
+(approval threshold). Storefront checkout is API-only for now: `POST /v1/storefront/carts`, `PUT .../lines`
+(`X-Cart-Token`), `POST /v1/storefront/checkouts` (`Idempotency-Key`), then
+`POST /v1/storefront/orders/{id}/sandbox-payment` — a SANDBOX gateway, no real money.

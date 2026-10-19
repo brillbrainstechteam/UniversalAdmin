@@ -50,5 +50,20 @@ describe('configuration', () => {
   it('fails fast on weak secrets and insecure production cookies', () => {
     expect(() => loadConfig({ ...base, STOREFRONT_GATEWAY_KEY: 'short' })).toThrow(/STOREFRONT_GATEWAY_KEY/);
     expect(() => loadConfig({ ...base, NODE_ENV: 'production' })).toThrow(/COOKIE_SECURE/);
+    // The sandbox payment gateway can never run in production (ADR-022).
+    expect(() => loadConfig({ ...base, NODE_ENV: 'production', COOKIE_SECURE: 'true' })).toThrow(
+      /PAYMENTS_SANDBOX_ENABLED/,
+    );
+    expect(
+      loadConfig({
+        ...base,
+        NODE_ENV: 'production',
+        COOKIE_SECURE: 'true',
+        PAYMENTS_SANDBOX_ENABLED: 'false',
+      }).PAYMENTS_SANDBOX_ENABLED,
+    ).toBe(false);
+    expect(() => loadConfig({ ...base, PAYMENTS_SANDBOX_SECRET: 'short' })).toThrow(
+      /PAYMENTS_SANDBOX_SECRET/,
+    );
   });
 });

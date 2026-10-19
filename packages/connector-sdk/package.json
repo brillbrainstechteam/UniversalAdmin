@@ -1,0 +1,21 @@
+{
+  "name": "@uc/connector-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@uc/contracts": "workspace:*",
+    "read-excel-file": "^5.8.0"
+  },
+  "devDependencies": {
+    "@uc/config": "workspace:*",
+    "exceljs": "^4.4.0",
+    "vitest": "^3.0.5"
+  }
+}

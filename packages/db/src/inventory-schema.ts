@@ -327,6 +327,8 @@ export const stockCounts = pgTable(
       .notNull()
       .default('stocktake'),
     sourceVersion: text('source_version'),
+    /** Phase 05: the ERP connection a snapshot came from (stale checks are per connection). */
+    connectionId: uuid('connection_id'),
     asOf: ts('as_of').notNull(),
     status: text('status', { enum: ['applied', 'rejected_stale'] }).notNull(),
     reference: text('reference'),
@@ -337,6 +339,7 @@ export const stockCounts = pgTable(
   (t) => [
     unique('stock_counts_tenant_id_uq').on(t.tenantId, t.id),
     index('stock_counts_location_idx').on(t.tenantId, t.locationId, t.source, t.asOf.desc()),
+    index('stock_counts_connection_idx').on(t.tenantId, t.connectionId, t.locationId, t.asOf.desc()),
     foreignKey({ columns: [t.tenantId, t.locationId], foreignColumns: [locations.tenantId, locations.id] }),
     check('stock_counts_status_ck', sql`${t.status} in ('applied','rejected_stale')`),
   ],
@@ -368,11 +371,19 @@ export const reconciliationIssues = pgTable(
   {
     id: id(),
     tenantId: tenantId(),
-    domain: text('domain', { enum: ['inventory'] })
+    domain: text('domain', { enum: ['inventory', 'integration'] })
       .notNull()
       .default('inventory'),
     kind: text('kind', {
-      enum: ['ledger_balance_mismatch', 'stale_snapshot', 'stocktake_variance', 'serial_state_mismatch'],
+      enum: [
+        'ledger_balance_mismatch',
+        'stale_snapshot',
+        'stocktake_variance',
+        'serial_state_mismatch',
+        'erp_stock_mismatch',
+        'erp_record_deleted',
+        'erp_piece_conflict',
+      ],
     }).notNull(),
     severity: text('severity', { enum: ['info', 'warning', 'critical'] }).notNull(),
     variantId: uuid('variant_id'),
