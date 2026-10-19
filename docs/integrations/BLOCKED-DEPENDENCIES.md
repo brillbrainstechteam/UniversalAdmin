@@ -17,6 +17,8 @@ if it were real. Update this file and that constant together when an item is unb
 | Payments | Payment gateway (real PSP) | Gateway account, sandbox keys, webhook signing secret | 07/09 | Sandbox gateway (signed callbacks, no real money, disabled in production) |
 | Shipping | Courier tracking | Courier / aggregator account + API keys | 09/11 | — |
 | Tax | GST/HSN rates and invoice format | Accountant validation of configured rules | 06/07 | Configurable rules flagged "pending validation" |
+| B2B | GSTIN verification / e-invoicing | GST Suvidha Provider (GSP) access + accountant/legal sign-off | 08 | GSTIN format check only, labelled "not verified" |
+| B2B | ERP outstanding balances / credit | A live ERP adapter (see ERP rows) exposing receivables per customer | 08 | Commerce-side credit ledger; ERP-authority companies show "not synced" |
 
 Vendor outreach drafts: [VENDOR-OUTREACH.md](VENDOR-OUTREACH.md). Research: [ERP-VENDOR-RESEARCH.md](ERP-VENDOR-RESEARCH.md).
 Per-tenant discovery status is recorded in the app (Integrations → vendor card → Discovery checklist).

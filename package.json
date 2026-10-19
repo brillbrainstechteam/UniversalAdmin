@@ -16,6 +16,7 @@
     "dev:worker": "pnpm --filter @uc/worker run dev",
     "dev:merchant": "pnpm --filter @uc/merchant-admin run dev",
     "dev:platform": "pnpm --filter @uc/platform-admin run dev",
+    "dev:portal": "pnpm --filter @uc/buyer-portal run dev",
     "openapi:generate": "pnpm --filter @uc/api run openapi:generate",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -24,6 +24,7 @@ import {
 } from '@uc/contracts';
 import {
   channelPublications,
+  companies,
   channels,
   jewelleryComponents,
   jewellerySpecs,
@@ -105,6 +106,8 @@ export interface Scope {
   storefront: boolean;
   now: Date;
   settings: SettingsRow;
+  /** Phase 08: the buying company's own price book (wins over channel and all-channel books). */
+  companyBookId?: string | null;
 }
 
 const invalid = (message: string, details?: unknown) =>
@@ -288,9 +291,16 @@ export class QuoteService {
         and(
           eq(priceBooks.tenantId, scope.tenantId),
           eq(priceBooks.status, 'active'),
-          scope.channelId
-            ? or(isNull(priceBooks.channelId), eq(priceBooks.channelId, scope.channelId))
-            : isNull(priceBooks.channelId),
+          or(
+            scope.companyBookId ? eq(priceBooks.id, scope.companyBookId) : undefined,
+            and(
+              scope.channelId
+                ? or(isNull(priceBooks.channelId), eq(priceBooks.channelId, scope.channelId))
+                : isNull(priceBooks.channelId),
+              // A book assigned to a company is that company's only: never used for anyone else.
+              sql`not exists (select 1 from ${companies} c where c.tenant_id = ${scope.tenantId} and c.price_book_id = ${priceBooks.id})`,
+            ),
+          ),
           or(isNull(priceBooks.effectiveFrom), lte(priceBooks.effectiveFrom, scope.now)),
           or(isNull(priceBooks.effectiveTo), gt(priceBooks.effectiveTo, scope.now)),
         ),
@@ -312,6 +322,7 @@ export class QuoteService {
       );
     const bookOrder = [...books].sort(
       (a, b) =>
+        (b.id === scope.companyBookId ? 1 : 0) - (a.id === scope.companyBookId ? 1 : 0) ||
         (b.channelId ? 1 : 0) - (a.channelId ? 1 : 0) ||
         b.priority - a.priority ||
         a.name.localeCompare(b.name),
@@ -483,6 +494,7 @@ export class QuoteService {
     ctx: { tenantId: string; features: readonly string[] },
     channelId: string | null,
     storefront: boolean,
+    companyBookId: string | null = null,
   ): Promise<Scope> {
     if (channelId && !storefront) {
       const [c] = await tx
@@ -498,6 +510,7 @@ export class QuoteService {
       storefront,
       now: new Date(),
       settings: await loadPricingSettings(tx, ctx.tenantId),
+      companyBookId,
     };
   }
 

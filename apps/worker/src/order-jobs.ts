@@ -1,11 +1,12 @@
-import { expireOrders, expireQuotations, systemTx, type Db } from '@uc/db';
+import { expireOrders, expireQuotations, expireRfqs, systemTx, type Db } from '@uc/db';
 import type { Logger } from 'pino';
 
 /** One pass: cancel unpaid / unapproved orders past their window (stock released), expire lapsed quotations. */
 export async function runOrderExpiryPass(db: Db, now = new Date()) {
   const orders = await systemTx(db, (tx) => expireOrders(tx, now));
   const quotations = await systemTx(db, (tx) => expireQuotations(tx, now));
-  return { orders, quotations };
+  const rfqs = await systemTx(db, (tx) => expireRfqs(tx, now));
+  return { orders, quotations, rfqs };
 }
 
 const sleep = (ms: number, signal: AbortSignal) =>
@@ -25,7 +26,7 @@ export async function runOrderLoops(db: Db, logger: Logger, signal: AbortSignal,
   while (!signal.aborted) {
     try {
       const r = await runOrderExpiryPass(db);
-      if (r.orders || r.quotations) logger.info(r, 'orders/quotations expired');
+      if (r.orders || r.quotations || r.rfqs) logger.info(r, 'orders/quotations/RFQs expired');
     } catch (error) {
       logger.error({ err: error }, 'order expiry failed');
     }

@@ -6,6 +6,7 @@ import { hashPassword } from './crypto';
 import { provisionTenantRecords, type ProvisionTenantInput } from './provisioning';
 import { DEMO_CATALOG, seedDemoCatalog } from './seed-catalog';
 import { seedDemoSimulatorConnection } from './seed-integrations';
+import { seedDemoB2b } from './seed-b2b';
 import { seedDemoPricing } from './seed-pricing';
 import { DEMO_INVENTORY, seedDemoInventory } from './seed-inventory';
 import { DEMO_JEWELLERY, seedDemoJewellery } from './seed-jewellery';
@@ -73,6 +74,8 @@ export const DEMO = {
     aurumViewer: 'viewer@aurum.demo',
     aurumStock: 'stock@aurum.demo',
     aurumRates: 'rates@aurum.demo',
+    shreeBuyer: 'buyer@shree.demo',
+    shreeApprover: 'approver@shree.demo',
     lumiereOwner: 'owner@lumiere.demo',
     northwindOwner: 'owner@northwind.demo',
     multi: 'multi@demo.local',
@@ -217,6 +220,13 @@ export async function seedDemo(db: Db, password: string): Promise<SeedResult> {
         'Ravi Rates (demo rate approver)',
         passwordHash,
       ),
+      shreeBuyer: await createUser(tx, DEMO.users.shreeBuyer, 'Bina Buyer (Shree, demo)', passwordHash),
+      shreeApprover: await createUser(
+        tx,
+        DEMO.users.shreeApprover,
+        'Arjun Approver (Shree, demo)',
+        passwordHash,
+      ),
       lumiereOwner: await createUser(tx, DEMO.users.lumiereOwner, 'Leela Lumière (demo owner)', passwordHash),
       northwindOwner: await createUser(
         tx,
@@ -270,6 +280,14 @@ export async function seedDemo(db: Db, password: string): Promise<SeedResult> {
       metal: true,
       makerId: u.aurumOwner,
       checkerId: u.aurumRates,
+    });
+    await seedDemoB2b(tx, {
+      tenantId: aurum.tenant.id,
+      buyerUserId: u.shreeBuyer,
+      approverUserId: u.shreeApprover,
+      makerId: u.aurumOwner,
+      checkerId: u.aurumRates,
+      repUserId: null,
     });
     await seedDemoPricing(tx, {
       tenantId: lumiere.tenant.id,

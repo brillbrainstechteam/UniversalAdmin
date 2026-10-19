@@ -7,7 +7,11 @@ import { APP_CONFIG, type AppConfig } from '../../config/config';
 import { DbService } from '../../db/db.service';
 import type { AuthState } from '../../common/request';
 
-export const SESSION_COOKIES: Record<Audience, string> = { merchant: 'uc_m_sess', platform: 'uc_p_sess' };
+export const SESSION_COOKIES: Record<Audience, string> = {
+  merchant: 'uc_m_sess',
+  platform: 'uc_p_sess',
+  buyer: 'uc_b_sess',
+};
 const LAST_SEEN_WRITE_INTERVAL_MS = 60_000;
 
 /** Opaque, server-side revocable sessions; only the SHA-256 of the token is stored (ADR-003). */

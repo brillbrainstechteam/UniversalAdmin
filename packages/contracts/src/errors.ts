@@ -51,6 +51,9 @@ export const ErrorCodes = [
   'PRICE_CHANGED',
   'SIGNATURE_INVALID',
   'PAYMENTS_DISABLED',
+  'CREDIT_LIMIT_EXCEEDED',
+  'MINIMUM_NOT_MET',
+  'COMPANY_ON_HOLD',
   'INTERNAL',
 ] as const;
 export type ErrorCode = (typeof ErrorCodes)[number];

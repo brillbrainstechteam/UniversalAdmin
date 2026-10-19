@@ -19,7 +19,7 @@ export const Contact = z
   .openapi('Contact');
 export type Contact = z.infer<typeof Contact>;
 
-export const ORDER_STATUSES = ['awaiting_approval', 'pending_payment', 'confirmed', 'on_hold', 'cancelled'] as const;
+export const ORDER_STATUSES = ['awaiting_buyer_approval', 'awaiting_approval', 'pending_payment', 'confirmed', 'on_hold', 'cancelled'] as const;
 export const OrderStatus = z.enum(ORDER_STATUSES);
 export type OrderStatus = z.infer<typeof OrderStatus>;
 export const PaymentStatus = z.enum(['unpaid', 'pending', 'paid', 'failed', 'refund_due']);

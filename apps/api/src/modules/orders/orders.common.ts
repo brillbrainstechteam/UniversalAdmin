@@ -198,7 +198,12 @@ export interface PlaceOrderInput {
   cartId?: string | null;
   checkoutKey?: string | null;
   /** What happens after the holds are placed. */
-  next: 'pending_payment' | 'awaiting_approval' | 'confirm';
+  /** Phase 08 B2B: buying company, delivery location, buyer, purchase order number. */
+  companyId?: string | null;
+  companyLocationId?: string | null;
+  buyerId?: string | null;
+  poNumber?: string | null;
+  next: 'pending_payment' | 'awaiting_buyer_approval' | 'awaiting_approval' | 'confirm';
   holdMinutes: number;
   actorUserId: string | null;
   correlationId: string | null;
@@ -232,7 +237,9 @@ export async function placeOrder(tx: Tx, input: PlaceOrderInput): Promise<OrderR
     holds.push(reservation.id);
   }
   const status =
-    input.next === 'awaiting_approval' ? ('awaiting_approval' as const) : ('pending_payment' as const);
+    input.next === 'awaiting_approval' || input.next === 'awaiting_buyer_approval'
+      ? input.next
+      : ('pending_payment' as const);
   const [order] = await tx
     .insert(orders)
     .values({
@@ -256,6 +263,10 @@ export async function placeOrder(tx: Tx, input: PlaceOrderInput): Promise<OrderR
       quotationId: input.quotationId ?? null,
       cartId: input.cartId ?? null,
       checkoutKey: input.checkoutKey ?? null,
+      companyId: input.companyId ?? null,
+      companyLocationId: input.companyLocationId ?? null,
+      buyerId: input.buyerId ?? null,
+      poNumber: input.poNumber ?? null,
       warnings: [...new Set(input.priced.flatMap((l) => l.breakdown.warnings))],
       createdBy: input.actorUserId,
       expiresAt: input.next === 'confirm' ? null : new Date(input.now.getTime() + input.holdMinutes * 60_000),

@@ -4,6 +4,7 @@ import type { Tx } from './client';
 import { connections, outboundCommands } from './integrations-schema';
 import { InventoryError, commitReservation, releaseReservation, reserveStock } from './inventory';
 import { reservations } from './inventory-schema';
+import { creditEntries, rfqs } from './b2b-schema';
 import { orderEvents, orderLines, orderSettings, orders, quotations } from './orders-schema';
 import { enqueueEvent } from './outbox';
 
@@ -24,7 +25,7 @@ interface Actor {
 export async function nextDocumentNumber(
   tx: Tx,
   tenantId: string,
-  kind: 'order' | 'quotation',
+  kind: 'order' | 'quotation' | 'rfq',
 ): Promise<string> {
   await tx.insert(orderSettings).values({ tenantId }).onConflictDoNothing();
   const [row] = await tx
@@ -32,12 +33,19 @@ export async function nextDocumentNumber(
     .set(
       kind === 'order'
         ? { nextOrderNumber: sql`${orderSettings.nextOrderNumber} + 1` }
-        : { nextQuotationNumber: sql`${orderSettings.nextQuotationNumber} + 1` },
+        : kind === 'quotation'
+          ? { nextQuotationNumber: sql`${orderSettings.nextQuotationNumber} + 1` }
+          : { nextRfqNumber: sql`${orderSettings.nextRfqNumber} + 1` },
     )
     .where(eq(orderSettings.tenantId, tenantId))
     .returning();
-  const n = (kind === 'order' ? row!.nextOrderNumber : row!.nextQuotationNumber) - 1;
-  return `${kind === 'order' ? row!.orderPrefix : row!.quotationPrefix}-${String(n).padStart(6, '0')}`;
+  const [n, prefix] =
+    kind === 'order'
+      ? [row!.nextOrderNumber, row!.orderPrefix]
+      : kind === 'quotation'
+        ? [row!.nextQuotationNumber, row!.quotationPrefix]
+        : [row!.nextRfqNumber, row!.rfqPrefix];
+  return `${prefix}-${String(n - 1).padStart(6, '0')}`;
 }
 
 export async function addOrderEvent(
@@ -273,6 +281,26 @@ export async function cancelOrder(
     });
   // Pending payments are left open on purpose: a PSP may still capture them, and a late capture on a cancelled
   // order then records a refund due (see PaymentsService) instead of being lost.
+  // On-account company orders release the credit they reserved (once; the ledger is append-only).
+  if (order.companyId) {
+    const charged = await tx
+      .select({ amount: creditEntries.amountMinor, type: creditEntries.type })
+      .from(creditEntries)
+      .where(eq(creditEntries.orderId, order.id));
+    const charge = charged.find((c) => c.type === 'order_charge');
+    if (charge && !charged.some((c) => c.type === 'order_release'))
+      await tx.insert(creditEntries).values({
+        tenantId: order.tenantId,
+        companyId: order.companyId,
+        type: 'order_release',
+        amountMinor: -charge.amount,
+        reference: order.number,
+        orderId: order.id,
+        note: `Order ${order.number} cancelled: ${actor.reason}`,
+        actorUserId: actor.actorUserId,
+        createdAt: now,
+      });
+  }
   const paid = order.paymentStatus === 'paid';
   const exported = await tx
     .select({ ref: outboundCommands.reference, status: outboundCommands.status })
@@ -335,7 +363,12 @@ export async function expireOrders(tx: Tx, now = new Date(), limit = 100): Promi
   const due = await tx
     .select()
     .from(orders)
-    .where(and(inArray(orders.status, ['pending_payment', 'awaiting_approval']), lte(orders.expiresAt, now)))
+    .where(
+      and(
+        inArray(orders.status, ['pending_payment', 'awaiting_approval', 'awaiting_buyer_approval']),
+        lte(orders.expiresAt, now),
+      ),
+    )
     .orderBy(asc(orders.expiresAt))
     .limit(limit)
     .for('update', { skipLocked: true });
@@ -394,4 +427,14 @@ export async function acknowledgedCommitments(
        )})
      group by r.variant_id, r.location_id`);
   return new Map(rows.rows.map((r) => [`${r.variant_id}:${r.location_id}`, r.qty]));
+}
+
+/** Worker pass: submitted RFQs past the buyer's "needed by" date (never quoted) become expired. */
+export async function expireRfqs(tx: Tx, now = new Date()): Promise<number> {
+  const expired = await tx
+    .update(rfqs)
+    .set({ status: 'expired', updatedAt: now, version: sql`${rfqs.version} + 1` })
+    .where(and(eq(rfqs.status, 'submitted'), lte(rfqs.neededBy, now)))
+    .returning({ id: rfqs.id });
+  return expired.length;
 }

@@ -206,6 +206,8 @@ export const priceListEntries = pgTable(
     bookId: uuid('book_id').notNull(),
     variantId: uuid('variant_id').notNull(),
     amount: money6('amount').notNull(),
+    /** B2B minimum order quantity in pieces (null = none). */
+    minQuantity: integer('min_quantity'),
     updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
     updatedAt: ts('updated_at').notNull().defaultNow(),
   },
@@ -220,6 +222,7 @@ export const priceListEntries = pgTable(
       foreignColumns: [variants.tenantId, variants.id],
     }).onDelete('cascade'),
     check('price_list_entries_amount_ck', sql`${t.amount} >= 0`),
+    check('price_list_entries_moq_ck', sql`${t.minQuantity} is null or ${t.minQuantity} > 0`),
   ],
 );
 

@@ -32,6 +32,8 @@ pnpm dev:platform   # http://localhost:3101
 | owner@lumiere.demo | merchant admin | Lumière Fine (B2C jewellery) — owner |
 | owner@northwind.demo | merchant admin | Northwind General (general commerce, no jewellery) — owner |
 | multi@demo.local | merchant admin | Aurum catalog editor + Northwind admin (tenant picker) |
+| buyer@shree.demo | buyer portal | Shree Jewels (DEMO), Aurum's wholesale customer — buyer for the Mumbai location, order limit ₹1,00,000 |
+| approver@shree.demo | buyer portal | Shree Jewels (DEMO) — company approver (approves buyers' orders above their limit) |
 
 Each demo tenant has a small published demo catalog (products marked "Demo product" in their description).
 
@@ -44,7 +46,7 @@ Storefront resolver demo: `curl -H "Host: lumiere.localhost" http://localhost:41
 ```bash
 pnpm format:check && pnpm lint && pnpm typecheck
 pnpm test          # unit + migration + integration (resets the uc_test database)
-pnpm test:e2e      # Playwright; requires `pnpm build`; starts API + both admins itself
+pnpm test:e2e      # Playwright; requires `pnpm build`; starts the API, both admins and the buyer portal itself
 pnpm openapi:generate   # regenerate docs/api/openapi.json after API contract changes
 ```
 Tests never touch `uc_dev`. Redis logical DBs: 0 dev, 1 API tests, 2 worker tests, 3 E2E. S3 buckets: uc-dev-media, uc-test-media, uc-e2e-media.
@@ -56,7 +58,7 @@ Tests never touch `uc_dev`. Redis logical DBs: 0 dev, 1 API tests, 2 worker test
   `DbService.tenant()`; `DbService.system()` is reserved for platform/auth/resolver/worker paths.
 
 ## Ports
-5440 Postgres · 6390 Redis · 9010 object store · 4100 API · 3100 merchant admin · 3101 platform admin.
+5440 Postgres · 6390 Redis · 9010 object store · 4100 API · 3100 merchant admin · 3101 platform admin · 3102 buyer portal.
 
 ## Pricing demo (Phase 06)
 Aurum and Lumière have DEMO metal rates (illustrative, not market data) approved by a second person, and a published
@@ -71,3 +73,12 @@ Orders → New order (staff order on account), Orders → Quotations (send freez
 (approval threshold). Storefront checkout is API-only for now: `POST /v1/storefront/carts`, `PUT .../lines`
 (`X-Cart-Token`), `POST /v1/storefront/checkouts` (`Idempotency-Key`), then
 `POST /v1/storefront/orders/{id}/sandbox-payment` — a SANDBOX gateway, no real money.
+
+## B2B demo (Phase 08)
+Start the portal with `pnpm dev:portal` and open **http://aurum-b2b.localhost:3102** (browsers resolve
+`*.localhost` to this machine; the domain picks Aurum's B2B storefront). Sign in as `buyer@shree.demo`:
+Quick order → paste `AUR-BAND22-14, AUR-T-0003` → Get prices shows Shree's contract price build-up. Requests for
+quote → New request; answer it in the merchant admin under Companies → RFQ inbox (`owner@aurum.demo`), then
+"Send quotation" and accept some or all lines in the portal under Quotations. `approver@shree.demo` sees
+Approvals. Companies → Shree shows locations, buyers (invite link), and the credit ledger (record a payment or
+advance). The portal proxy reads `STOREFRONT_GATEWAY_KEY` from the environment or the repo `.env`.

@@ -159,4 +159,6 @@ export const BLOCKED_DEPENDENCIES: { area: string; item: string; waitingFor: str
   { area: 'Payments', item: 'Payment gateway', waitingFor: 'Gateway account + sandbox keys', phase: '07/09' },
   { area: 'Shipping', item: 'Courier tracking', waitingFor: 'Courier/aggregator account + API keys', phase: '09/11' },
   { area: 'Tax', item: 'GST/HSN rates and invoice format', waitingFor: 'Accountant validation of configured rules', phase: '06/07' },
+  { area: 'B2B', item: 'GSTIN verification / e-invoicing', waitingFor: 'GSP access + accountant/legal sign-off (format check only until then)', phase: '08' },
+  { area: 'B2B', item: 'ERP outstanding balances / credit', waitingFor: 'A live ERP adapter exposing receivables per customer', phase: '08' },
 ];

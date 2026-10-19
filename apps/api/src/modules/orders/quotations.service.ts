@@ -32,6 +32,7 @@ import type { AuthState, RequestMeta, TenantState } from '../../common/request';
 import { DbService } from '../../db/db.service';
 import { QuoteService } from '../pricing/quote.service';
 import { loadOrderSettings, placeOrder, requireOrders, toOrder } from './orders.common';
+import { chargeCredit, guardCompanyOrder } from '../b2b/b2b.common';
 import { APPROVAL_HOLD_MINUTES } from './orders.service';
 
 type Row = typeof quotations.$inferSelect;
@@ -399,6 +400,8 @@ export class QuotationsService {
         throw new AppError(409, 'INVALID_STATE_TRANSITION', `Quotation ${row.number} is ${row.status}`);
       this.assertLive(row);
       const [pq] = await tx.select().from(priceQuotes).where(eq(priceQuotes.id, row.priceQuoteId!));
+      // Company quotations (Phase 08) respect the company's status and credit like buyer orders do.
+      if (row.companyId) await guardCompanyOrder(tx, ctx.tenantId, row.companyId, pq!.totalMinor);
       const settings = await loadOrderSettings(tx, ctx.tenantId);
       const needsApproval =
         settings.approvalThresholdMinor !== null && pq!.totalMinor >= settings.approvalThresholdMinor;
@@ -418,12 +421,22 @@ export class QuotationsService {
         totalMinor: pq!.totalMinor,
         priceQuoteId: pq!.id,
         quotationId: row.id,
+        companyId: row.companyId,
         next: needsApproval ? 'awaiting_approval' : 'confirm',
         holdMinutes: needsApproval ? APPROVAL_HOLD_MINUTES : settings.checkoutHoldMinutes,
         actorUserId: auth.userId,
         correlationId: meta.correlationId,
         now: new Date(),
       });
+      if (row.companyId)
+        await chargeCredit(tx, {
+          tenantId: ctx.tenantId,
+          companyId: row.companyId,
+          orderId: order.id,
+          number: order.number,
+          totalMinor: order.totalMinor,
+          actorUserId: auth.userId,
+        });
       await tx
         .update(quotations)
         .set({ status: 'converted', orderId: order.id, version: row.version + 1, updatedAt: new Date() })

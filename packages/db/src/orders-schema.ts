@@ -41,6 +41,8 @@ export const orderSettings = pgTable(
     quotationPrefix: text('quotation_prefix').notNull().default('QUO'),
     nextOrderNumber: integer('next_order_number').notNull().default(1),
     nextQuotationNumber: integer('next_quotation_number').notNull().default(1),
+    rfqPrefix: text('rfq_prefix').notNull().default('RFQ'),
+    nextRfqNumber: integer('next_rfq_number').notNull().default(1),
     version: version(),
     updatedAt: ts('updated_at').notNull().defaultNow(),
   },
@@ -88,7 +90,14 @@ export const orders = pgTable(
     channelId: uuid('channel_id'),
     origin: text('origin', { enum: ['storefront', 'admin', 'quotation'] }).notNull(),
     status: text('status', {
-      enum: ['awaiting_approval', 'pending_payment', 'confirmed', 'on_hold', 'cancelled'],
+      enum: [
+        'awaiting_buyer_approval',
+        'awaiting_approval',
+        'pending_payment',
+        'confirmed',
+        'on_hold',
+        'cancelled',
+      ],
     }).notNull(),
     paymentStatus: text('payment_status', { enum: ['unpaid', 'pending', 'paid', 'failed', 'refund_due'] })
       .notNull()
@@ -108,6 +117,14 @@ export const orders = pgTable(
     priceQuoteId: uuid('price_quote_id'),
     quotationId: uuid('quotation_id'),
     cartId: uuid('cart_id'),
+    /** Phase 08 B2B: buying company, its delivery location, the buyer and the buyer-side approval. */
+    companyId: uuid('company_id'),
+    companyLocationId: uuid('company_location_id'),
+    buyerId: uuid('buyer_id'),
+    poNumber: text('po_number'),
+    buyerApprovedBy: uuid('buyer_approved_by').references(() => users.id, { onDelete: 'set null' }),
+    buyerApprovedAt: ts('buyer_approved_at'),
+    buyerApprovalNote: text('buyer_approval_note'),
     /** Storefront checkout Idempotency-Key: a second order for the same key is impossible (DB backstop). */
     checkoutKey: text('checkout_key'),
     warnings: jsonb('warnings')
@@ -132,6 +149,7 @@ export const orders = pgTable(
       .where(sql`${t.checkoutKey} is not null`),
     index('orders_tenant_created_idx').on(t.tenantId, t.createdAt.desc()),
     index('orders_due_idx').on(t.status, t.expiresAt),
+    index('orders_company_idx').on(t.companyId, t.createdAt.desc()),
     foreignKey({ columns: [t.tenantId, t.channelId], foreignColumns: [channels.tenantId, channels.id] }),
     foreignKey({
       columns: [t.tenantId, t.priceQuoteId],
@@ -139,7 +157,7 @@ export const orders = pgTable(
     }),
     check(
       'orders_status_ck',
-      sql`${t.status} in ('awaiting_approval','pending_payment','confirmed','on_hold','cancelled')`,
+      sql`${t.status} in ('awaiting_buyer_approval','awaiting_approval','pending_payment','confirmed','on_hold','cancelled')`,
     ),
     check(
       'orders_payment_status_ck',
@@ -274,6 +292,9 @@ export const quotations = pgTable(
     validUntil: ts('valid_until').notNull(),
     priceQuoteId: uuid('price_quote_id'),
     acceptanceNote: text('acceptance_note'),
+    /** Phase 08: quotation for a company, optionally answering an RFQ. */
+    companyId: uuid('company_id'),
+    rfqId: uuid('rfq_id'),
     orderId: uuid('order_id'),
     cancelReason: text('cancel_reason'),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),

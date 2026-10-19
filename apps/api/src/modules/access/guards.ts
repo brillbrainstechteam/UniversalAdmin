@@ -6,6 +6,7 @@ import {
   type CanActivate,
   type ExecutionContext,
 } from '@nestjs/common';
+import { timingSafeEqual } from 'node:crypto';
 import { Reflector } from '@nestjs/core';
 import type { Audience, PlatformPermission, TenantPermission } from '@uc/contracts';
 import { APP_CONFIG, type AppConfig } from '../../config/config';
@@ -34,6 +35,7 @@ export class CsrfGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<AppRequest>();
     if (SAFE_METHODS.has(req.method)) return true;
+    if (/^\/v1\/storefront\/b2b\//.test(req.path)) return this.buyerPortal(req);
     if (!/^\/v1\/(auth|admin|platform)\//.test(req.path)) return true;
     const origin = req.header('origin');
     if (origin && !this.config.ALLOWED_ORIGINS.includes(origin)) {
@@ -44,6 +46,40 @@ export class CsrfGuard implements CanActivate {
     }
     return true;
   }
+
+  /**
+   * Buyer portal (cookie session on each merchant's own B2B domain): the CSRF header is required and an Origin, when
+   * sent, must be that same storefront domain.
+   */
+  private buyerPortal(req: AppRequest): boolean {
+    if (req.header('x-uc-csrf') !== '1')
+      throw new AppError(403, 'CSRF_CHECK_FAILED', 'Missing X-UC-CSRF header');
+    const origin = req.header('origin');
+    if (!origin) return true;
+    const forwarded = req.header('x-storefront-host');
+    const key = req.header('x-storefront-key');
+    const host = (
+      forwarded && key && safeKeyEqual(key, this.config.STOREFRONT_GATEWAY_KEY)
+        ? forwarded
+        : (req.header('host') ?? '')
+    )
+      .toLowerCase()
+      .replace(/:\d+$/, '');
+    let originHost = '';
+    try {
+      originHost = new URL(origin).hostname.toLowerCase();
+    } catch {
+      /* invalid origin */
+    }
+    if (originHost !== host) throw new AppError(403, 'CSRF_CHECK_FAILED', 'Origin not allowed');
+    return true;
+  }
+}
+
+function safeKeyEqual(a: string, b: string): boolean {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
 }
 
 abstract class SessionGuard implements CanActivate {

@@ -6,10 +6,10 @@
 | 02 CATALOG | approved, pushed (c336aee) | approved | 171 unit/integration + 13 E2E passing; see [phase-02-CATALOG.md](phase-02-CATALOG.md) |
 | 03 JEWELLERY | approved, pushed (0168b35) | approved | 211 unit/integration + 16 E2E passing; see [phase-03-JEWELLERY.md](phase-03-JEWELLERY.md) |
 | 04 INVENTORY | approved | approved | 234 unit/integration + 19 E2E passing; see [phase-04-INVENTORY.md](phase-04-INVENTORY.md) |
-| 05 CONNECTORS | implemented; user asked to advance | advanced (not committed) | 257 unit/integration + 21 E2E at the gate; see [phase-05-CONNECTORS.md](phase-05-CONNECTORS.md) |
-| 06 PRICING | implemented, awaiting review | pending | 294 unit/integration + 25 E2E passing; see [phase-06-PRICING.md](phase-06-PRICING.md) |
-| 07 ORDERS | implemented, awaiting review | pending | 307 unit/integration + 28 E2E passing; see [phase-07-ORDERS.md](phase-07-ORDERS.md) |
-| 08 B2B | not started | — | |
+| 05 CONNECTORS | implemented; user asked to advance | advanced (committed locally 675a9e4) | 257 unit/integration + 21 E2E at the gate; see [phase-05-CONNECTORS.md](phase-05-CONNECTORS.md) |
+| 06 PRICING | implemented, committed locally (675a9e4) | pending review | 294 unit/integration + 25 E2E passing; see [phase-06-PRICING.md](phase-06-PRICING.md) |
+| 07 ORDERS | implemented, committed locally (675a9e4) | pending review | 307 unit/integration + 28 E2E passing; see [phase-07-ORDERS.md](phase-07-ORDERS.md) |
+| 08 B2B | implemented, awaiting review | pending | 317 unit/integration + 30 E2E passing; see [phase-08-B2B.md](phase-08-B2B.md) |
 | 09 B2C | not started | — | |
 | 10 CMS-GROWTH | not started | — | |
 | 11 OPERATIONS | not started | — | |
@@ -30,3 +30,5 @@
 - 2026-10-19 — Phase 05 gates re-run (all green). User asked to advance through the remaining phases. Phase 05 pending items reviewed (phase-05-CONNECTORS.md → "Pending-items review"); the only one doable without third parties — slow large-import commit (27 s / 1,000 rows) — fixed to ~4 s (ADR-020). 257 tests still pass. Starting Phase 06.
 - 2026-10-19 — Phase 06 implemented. format/lint/typecheck/build/test (294)/e2e (25)/audit all exit 0. Live rate feed blocked (licence + credentials); simulator labelled. Not committed. Continuing to Phase 07 at the user's request.
 - 2026-10-19 — Phase 07 implemented. format/lint/typecheck/build/test (307)/e2e (28)/audit all exit 0. 4 defects found by tests and fixed. Phase 05 carried P0 (ERP double subtract) fixed. Payment gateway blocked (sandbox only). Not committed.
+- 2026-10-20 — Phases 05–07 committed locally as one commit (675a9e4, not pushed) with the user's permission.
+- 2026-10-20 — Phase 08 implemented: companies, credit, buyer identity, RFQs, buyer portal app. format/lint/typecheck/build/test (317)/e2e (30)/audit all exit 0. GSTIN verification and ERP credit blocked. Not committed. Continuing to Phase 09.

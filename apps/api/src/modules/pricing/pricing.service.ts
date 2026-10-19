@@ -409,6 +409,7 @@ export class PricingService {
           sku: r.sku,
           productTitle: r.title,
           amount: r.e.amount,
+          minQuantity: r.e.minQuantity,
           updatedAt: iso(r.e.updatedAt),
         })),
       };
@@ -455,12 +456,18 @@ export class PricingService {
               bookId,
               variantId: i.variantId,
               amount: i.amount!,
+              minQuantity: i.minQuantity ?? null,
               updatedBy: auth.userId,
             })),
           )
           .onConflictDoUpdate({
             target: [priceListEntries.bookId, priceListEntries.variantId],
-            set: { amount: sql`excluded.amount`, updatedBy: auth.userId, updatedAt: new Date() },
+            set: {
+              amount: sql`excluded.amount`,
+              minQuantity: sql`excluded.min_quantity`,
+              updatedBy: auth.userId,
+              updatedAt: new Date(),
+            },
           });
       await audit(tx, auth, ctx, meta, 'pricing.list_prices_updated', 'price_book', bookId, {
         oldValues: Object.fromEntries(before.map((b) => [b.variantId, b.amount])),

@@ -11,6 +11,7 @@ export default defineConfig({
     './src/integrations-schema.ts',
     './src/pricing-schema.ts',
     './src/orders-schema.ts',
+    './src/b2b-schema.ts',
   ],
   out: './migrations',
   dbCredentials: { url: process.env.DATABASE_OWNER_URL ?? '' },

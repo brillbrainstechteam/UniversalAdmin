@@ -19,4 +19,5 @@ export * from './dto/pricing';
 export * from './pricing-engine';
 export * from './rate-providers';
 export * from './dto/orders';
+export * from './dto/b2b';
 export * from './openapi';

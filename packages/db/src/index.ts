@@ -9,6 +9,7 @@ export * from './pricing-schema';
 export * from './pricing';
 export * from './orders-schema';
 export * from './orders';
+export * from './b2b-schema';
 export * from './client';
 export * from './audit';
 export * from './outbox';

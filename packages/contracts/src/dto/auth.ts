@@ -3,7 +3,9 @@ import { PLATFORM_ROLE_KEYS, type PlatformRole } from '../permissions';
 import { PRESET_KEYS } from '../features';
 import { z } from '../z';
 
-export const Audience = z.enum(['merchant', 'platform']);
+/** Session audiences. Buyers sign in through their B2B portal (/v1/storefront/b2b/auth), never /v1/auth. */
+export const Audience = z.enum(['merchant', 'platform', 'buyer']);
+export const StaffAudience = z.enum(['merchant', 'platform']);
 export type Audience = z.infer<typeof Audience>;
 
 export const PASSWORD_MIN = 12;
@@ -17,7 +19,7 @@ export const LoginRequest = z
     email: Email,
     // Login accepts any non-empty password; policy applies when setting one.
     password: z.string().min(1).max(128),
-    audience: Audience,
+    audience: StaffAudience,
   })
   .openapi('LoginRequest');
 export type LoginRequest = z.infer<typeof LoginRequest>;

@@ -46,6 +46,36 @@ export class AuthService {
   ) {}
 
   async login(input: LoginRequest, meta: RequestMeta): Promise<{ token: string; me: MeResponse }> {
+    const user = await this.authenticate(input, meta, async (userId) => {
+      if (input.audience !== 'platform') return;
+      const [admin] = await this.db.system((tx) =>
+        tx.select().from(platformAdmins).where(eq(platformAdmins.userId, userId)),
+      );
+      if (!admin || admin.status !== 'active') {
+        throw Errors.forbidden('This account is not a platform operator');
+      }
+    });
+    const session = await this.sessions.create(user.id, input.audience, meta);
+    const me = await this.me({
+      userId: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      sessionId: session.sessionId,
+      audience: input.audience,
+      sessionExpiresAt: session.expiresAt,
+    });
+    return { token: session.token, me };
+  }
+
+  /**
+   * Shared credential check for every audience: per-IP/per-email throttling, lockout, timing-safe failure for unknown
+   * emails, audit. `eligible` runs after the password is verified (e.g. "is a platform operator", "is a buyer here").
+   */
+  async authenticate(
+    input: { email: string; password: string; audience: Audience },
+    meta: RequestMeta,
+    eligible: (userId: string) => Promise<void>,
+  ): Promise<typeof users.$inferSelect> {
     const { perIp, perEmail, windowSeconds } = this.config.loginRateLimit;
     const ipOk = await this.redis.hit(`rl:login:ip:${meta.ip ?? 'unknown'}`, perIp, windowSeconds);
     const emailOk = await this.redis.hit(`rl:login:email:${input.email}`, perEmail, windowSeconds);
@@ -99,15 +129,7 @@ export class AuthService {
       throw invalid();
     }
     if (user.status !== 'active') throw new AppError(401, 'ACCOUNT_DISABLED', 'This account is disabled');
-
-    if (input.audience === 'platform') {
-      const [admin] = await this.db.system((tx) =>
-        tx.select().from(platformAdmins).where(eq(platformAdmins.userId, user.id)),
-      );
-      if (!admin || admin.status !== 'active') {
-        throw Errors.forbidden('This account is not a platform operator');
-      }
-    }
+    await eligible(user.id);
 
     await this.db.system(async (tx) => {
       await tx
@@ -126,17 +148,7 @@ export class AuthService {
         ip: meta.ip,
       });
     });
-
-    const session = await this.sessions.create(user.id, input.audience, meta);
-    const me = await this.me({
-      userId: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      sessionId: session.sessionId,
-      audience: input.audience,
-      sessionExpiresAt: session.expiresAt,
-    });
-    return { token: session.token, me };
+    return user;
   }
 
   async me(auth: AuthState): Promise<MeResponse> {

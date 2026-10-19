@@ -31,6 +31,8 @@ export interface RequestOptions {
   tenantId?: string;
   idempotencyKey?: string;
   signal?: AbortSignal;
+  /** Extra request headers (e.g. the buyer portal's X-Company-Id). */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -48,6 +50,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
   if (options.tenantId) headers['X-Tenant-Id'] = options.tenantId;
   if (options.idempotencyKey) headers['Idempotency-Key'] = options.idempotencyKey;
+  Object.assign(headers, options.headers ?? {});
 
   let response: Response;
   try {

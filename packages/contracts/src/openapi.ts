@@ -1,5 +1,5 @@
 import { OpenAPIRegistry, OpenApiGeneratorV31, type RouteConfig } from '@asteasolutions/zod-to-openapi';
-import { IdParam } from './common';
+import { IdParam, PageQuery, Uuid } from './common';
 import { ErrorBody } from './errors';
 import { z } from './z';
 import * as A from './dto/auth';
@@ -12,6 +12,7 @@ import * as I from './dto/inventory';
 import * as X from './dto/integrations';
 import * as P from './dto/pricing';
 import * as O from './dto/orders';
+import * as B from './dto/b2b';
 
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 type Scope = 'auth' | 'admin' | 'platform' | 'storefront' | 'system';
@@ -265,6 +266,40 @@ export const API_ROUTES: ApiRouteDoc[] = [
   { method: 'get', path: '/v1/storefront/orders/{id}', scope: 'storefront', summary: 'Order status for the cart that placed it (X-Cart-Token)', params: IdParam, response: O.StorefrontOrder, errors: [404, 429] },
   { method: 'post', path: '/v1/storefront/orders/{id}/sandbox-payment', scope: 'storefront', summary: 'SANDBOX ONLY: simulate the PSP outcome (signed callback, no real money)', params: IdParam, body: O.SandboxPayRequest, response: O.StorefrontOrder, errors: [403, 404, 409, 429] },
   { method: 'post', path: '/v1/payments/sandbox/webhook', scope: 'system', summary: 'Sandbox PSP callback (X-Sandbox-Signature HMAC-SHA256, replay protected)', body: O.SandboxWebhook, response: O.WebhookAck, errors: [400, 401, 403, 404, 422] },
+  // ---- Phase 08: B2B wholesale ----
+  { method: 'get', path: '/v1/admin/companies', scope: 'admin', permission: 'companies.read', summary: 'Companies (sales reps see only assigned companies)', query: B.CompanyListQuery, response: B.CompanyPage },
+  { method: 'post', path: '/v1/admin/companies', scope: 'admin', permission: 'companies.manage', summary: 'Create a company (GSTIN format-checked only)', body: B.CreateCompanyRequest, response: B.Company, status: 201, errors: [400, 409] },
+  { method: 'get', path: '/v1/admin/companies/{id}', scope: 'admin', permission: 'companies.read', summary: 'Company with locations, buyers and credit summary', params: IdParam, response: B.Company, errors: [404] },
+  { method: 'patch', path: '/v1/admin/companies/{id}', scope: 'admin', permission: 'companies.manage', summary: 'Update company terms, credit, rep, price book, catalog, status', params: IdParam, body: B.UpdateCompanyRequest, response: B.Company, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/companies/{id}/locations', scope: 'admin', permission: 'companies.manage', summary: 'Add a company location', params: IdParam, body: B.CreateCompanyLocationRequest, response: B.CompanyLocation, status: 201, errors: [400, 404, 409] },
+  { method: 'patch', path: '/v1/admin/companies/{id}/locations/{childId}', scope: 'admin', permission: 'companies.manage', summary: 'Update a company location', params: z.object({ id: Uuid, childId: Uuid }), body: B.UpdateCompanyLocationRequest, response: B.CompanyLocation, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/companies/{id}/buyers', scope: 'admin', permission: 'companies.manage', summary: 'Invite a buyer (single-use link shown once)', params: IdParam, body: B.InviteBuyerRequest, response: B.InviteBuyerResponse, status: 201, errors: [400, 404, 409] },
+  { method: 'patch', path: '/v1/admin/companies/{id}/buyers/{childId}', scope: 'admin', permission: 'companies.manage', summary: 'Change a buyer role, locations, order limit or status', params: z.object({ id: Uuid, childId: Uuid }), body: B.UpdateBuyerRequest, response: B.CompanyBuyer, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/companies/{id}/credit', scope: 'admin', permission: 'companies.read', summary: 'Credit ledger (append-only)', params: IdParam, query: PageQuery, response: B.CreditEntryPage, errors: [404] },
+  { method: 'post', path: '/v1/admin/companies/{id}/credit', scope: 'admin', permission: 'companies.manage', summary: 'Record a payment, advance or adjustment', params: IdParam, body: B.RecordCreditEntryRequest, response: z.object({ id: Uuid, credit: B.CreditSummary }), status: 201, errors: [400, 404] },
+  { method: 'get', path: '/v1/admin/rfqs', scope: 'admin', permission: 'companies.read', summary: 'RFQ inbox', query: B.RfqListQuery, response: B.RfqPage },
+  { method: 'get', path: '/v1/admin/rfqs/{id}', scope: 'admin', permission: 'companies.read', summary: 'RFQ with negotiation thread', params: IdParam, response: B.Rfq, errors: [404] },
+  { method: 'post', path: '/v1/admin/rfqs/{id}/messages', scope: 'admin', permission: 'orders.manage', summary: 'Reply in the RFQ thread', params: IdParam, body: B.RfqMessageRequest, response: B.Rfq, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/rfqs/{id}/quote', scope: 'admin', permission: 'orders.manage', summary: 'Send a quotation (company prices, frozen until validUntil)', params: IdParam, body: B.QuoteRfqRequest, response: B.Rfq, errors: [400, 404, 409, 422] },
+  { method: 'post', path: '/v1/admin/rfqs/{id}/decline', scope: 'admin', permission: 'orders.manage', summary: 'Decline an RFQ with a reason', params: IdParam, body: B.DeclineRfqRequest, response: B.Rfq, errors: [404, 409] },
+  { method: 'post', path: '/v1/storefront/b2b/auth/login', scope: 'storefront', summary: 'Buyer sign-in on this B2B portal (sets the buyer session cookie)', body: B.BuyerLoginRequest, response: B.BuyerContext, errors: [401, 403, 404, 423, 429] },
+  { method: 'post', path: '/v1/storefront/b2b/auth/logout', scope: 'storefront', summary: 'Buyer sign-out', status: 204, errors: [403] },
+  { method: 'get', path: '/v1/storefront/b2b/me', scope: 'storefront', summary: 'Buyer context: companies, chosen company (X-Company-Id), locations, credit', response: B.BuyerContext, errors: [401, 403, 404] },
+  { method: 'post', path: '/v1/storefront/b2b/invitations/preview', scope: 'storefront', summary: 'Preview a buyer invitation', body: z.object({ token: z.string() }), response: B.BuyerInvitationPreview, errors: [400, 404] },
+  { method: 'post', path: '/v1/storefront/b2b/invitations/accept', scope: 'storefront', summary: 'Accept a buyer invitation (single use)', body: B.AcceptBuyerInvitationRequest, response: z.object({ companyName: z.string(), email: z.string() }), errors: [400, 401, 404] },
+  { method: 'get', path: '/v1/storefront/b2b/catalog', scope: 'storefront', summary: "The company's catalog (published on this portal, collection restriction, MOQ)", query: B.BuyerCatalogQuery, response: B.BuyerCatalogPage, errors: [401, 403] },
+  { method: 'post', path: '/v1/storefront/b2b/price', scope: 'storefront', summary: 'Company price for bulk lines (SKU / piece tag + quantity), with MOQ and minimum checks', body: B.BuyerPriceRequest, response: B.BuyerPriceResponse, errors: [401, 403, 409, 422] },
+  { method: 'post', path: '/v1/storefront/b2b/orders', scope: 'storefront', summary: 'Place an order on account (re-price, credit, buyer limit, approvals, holds)', body: B.BuyerPlaceOrderRequest, response: B.BuyerOrder, status: 201, errors: [400, 401, 403, 404, 409, 422] },
+  { method: 'get', path: '/v1/storefront/b2b/orders', scope: 'storefront', summary: "Company orders (the buyer's locations only)", query: B.BuyerOrderListQuery, response: B.BuyerOrderPage, errors: [401, 403] },
+  { method: 'get', path: '/v1/storefront/b2b/orders/{id}', scope: 'storefront', summary: 'Company order detail', params: IdParam, response: B.BuyerOrder, errors: [401, 403, 404] },
+  { method: 'post', path: '/v1/storefront/b2b/orders/{id}/approve', scope: 'storefront', summary: "Company approver approves an order over a buyer's limit (not their own)", params: IdParam, body: B.BuyerDecisionRequest, response: B.BuyerOrder, errors: [401, 403, 404, 409] },
+  { method: 'post', path: '/v1/storefront/b2b/orders/{id}/reject', scope: 'storefront', summary: 'Company approver rejects (stock and credit released)', params: IdParam, body: B.BuyerDecisionRequest, response: B.BuyerOrder, errors: [400, 401, 403, 404, 409] },
+  { method: 'post', path: '/v1/storefront/b2b/rfqs', scope: 'storefront', summary: 'Submit an RFQ', body: B.BuyerRfqRequest, response: B.Rfq, status: 201, errors: [400, 401, 403, 422] },
+  { method: 'get', path: '/v1/storefront/b2b/rfqs', scope: 'storefront', summary: 'Company RFQs', query: PageQuery, response: z.object({ items: z.array(B.Rfq), nextCursor: z.string().nullable() }), errors: [401, 403] },
+  { method: 'get', path: '/v1/storefront/b2b/rfqs/{id}', scope: 'storefront', summary: 'RFQ with thread', params: IdParam, response: B.Rfq, errors: [401, 403, 404] },
+  { method: 'post', path: '/v1/storefront/b2b/rfqs/{id}/messages', scope: 'storefront', summary: 'Reply in the RFQ thread', params: IdParam, body: B.RfqMessageRequest, response: B.Rfq, errors: [401, 403, 404, 409] },
+  { method: 'get', path: '/v1/storefront/b2b/quotations', scope: 'storefront', summary: 'Quotations for the company', response: z.object({ items: z.array(B.BuyerQuotation) }), errors: [401, 403] },
+  { method: 'post', path: '/v1/storefront/b2b/quotations/{id}/accept', scope: 'storefront', summary: 'Accept all or some quoted lines → order at the frozen price', params: IdParam, body: B.BuyerAcceptQuotationRequest, response: B.BuyerOrder, status: 201, errors: [400, 401, 403, 404, 409] },
 ];
 const SECURITY: Record<Scope, RouteConfig['security']> = {
   auth: [],
@@ -332,7 +367,7 @@ export function buildOpenApiDocument(
     openapi: '3.1.0',
     info: {
       title: 'Universal Commerce OS API',
-      version: '1.0.0-phase07',
+      version: '1.0.0-phase08',
       description:
         'Multi-tenant commerce platform API. Errors use {code,message,details,correlationId}. Decimals are strings; money is {amountMinor,currency}.',
     },

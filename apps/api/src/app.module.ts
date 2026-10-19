@@ -24,6 +24,10 @@ import { InventoryService } from './modules/inventory/inventory.service';
 import { JewelleryService } from './modules/jewellery/jewellery.service';
 import { PricingController, StorefrontPricingController } from './modules/pricing/pricing.controller';
 import { PricingService } from './modules/pricing/pricing.service';
+import { BuyerController, CompaniesController } from './modules/b2b/b2b.controller';
+import { BuyerService } from './modules/b2b/buyer.service';
+import { CompaniesService } from './modules/b2b/companies.service';
+import { RfqsService } from './modules/b2b/rfqs.service';
 import { CheckoutService } from './modules/orders/checkout.service';
 import {
   OrdersController,
@@ -91,6 +95,8 @@ export class AppModule {
         OrdersController,
         StorefrontOrdersController,
         PaymentWebhooksController,
+        CompaniesController,
+        BuyerController,
       ],
       providers: [
         { provide: APP_GUARD, useClass: CsrfGuard },
@@ -128,6 +134,9 @@ export class AppModule {
         PaymentsService,
         CheckoutService,
         QuotationsService,
+        CompaniesService,
+        RfqsService,
+        BuyerService,
       ],
     };
   }

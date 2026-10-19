@@ -370,13 +370,27 @@ export const UpdatePriceBookRequest = z
 export type UpdatePriceBookRequest = z.infer<typeof UpdatePriceBookRequest>;
 
 export const ListPrice = z
-  .object({ variantId: Uuid, sku: z.string(), productTitle: z.string(), amount: z.string(), updatedAt: Timestamp })
+  .object({
+    variantId: Uuid,
+    sku: z.string(),
+    productTitle: z.string(),
+    amount: z.string(),
+    /** B2B minimum order quantity (pieces). */
+    minQuantity: z.number().int().nullable(),
+    updatedAt: Timestamp,
+  })
   .openapi('ListPrice');
 export const ListPriceList = z.object({ items: z.array(ListPrice) }).openapi('ListPriceList');
 export const PutListPricesRequest = z
   .object({
     items: z
-      .array(z.object({ variantId: Uuid, amount: Amount.nullable() }))
+      .array(
+        z.object({
+          variantId: Uuid,
+          amount: Amount.nullable(),
+          minQuantity: z.number().int().min(1).max(100_000).nullable().optional(),
+        }),
+      )
       .min(1)
       .max(500),
   })

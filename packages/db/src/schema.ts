@@ -76,7 +76,7 @@ export const sessions = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    audience: text('audience', { enum: ['merchant', 'platform'] }).notNull(),
+    audience: text('audience', { enum: ['merchant', 'platform', 'buyer'] }).notNull(),
     createdAt: createdAt(),
     expiresAt: ts('expires_at').notNull(),
     lastSeenAt: ts('last_seen_at').notNull().defaultNow(),
@@ -87,7 +87,7 @@ export const sessions = pgTable(
   (t) => [
     uniqueIndex('sessions_token_hash_uq').on(t.tokenHash),
     index('sessions_user_idx').on(t.userId),
-    check('sessions_audience_ck', sql`${t.audience} in ('merchant','platform')`),
+    check('sessions_audience_ck', sql`${t.audience} in ('merchant','platform','buyer')`),
   ],
 );
 
