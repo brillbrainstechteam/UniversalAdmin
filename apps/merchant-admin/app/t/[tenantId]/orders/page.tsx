@@ -11,6 +11,8 @@ import {
   TextField,
   formatDateTime,
   useCursorPagination,
+  Alert,
+  Button,
 } from '@uc/ui';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
@@ -33,6 +35,32 @@ function OrdersList() {
   }, [q]);
   const filters = { status, paymentStatus, origin, q: debounced };
   const pager = useCursorPagination(JSON.stringify(filters));
+  const [exportError, setExportError] = useState<string | null>(null);
+  /** Same filters as the list; money columns in minor units. */
+  const exportCsv = async () => {
+    setExportError(null);
+    try {
+      const qs = new URLSearchParams({
+        ...(status ? { status } : {}),
+        ...(paymentStatus ? { paymentStatus } : {}),
+        ...(origin ? { origin } : {}),
+        ...(debounced ? { q: debounced } : {}),
+      });
+      const res = await fetch(`/api/v1/admin/orders-export.csv?${qs}`, {
+        headers: { 'X-Tenant-Id': tenantId },
+        credentials: 'same-origin',
+      });
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'orders.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Export failed');
+    }
+  };
   const list = useTenantQuery<Page<OrderSummary>>(
     ['orders', 'list'],
     '/v1/admin/orders',
@@ -46,14 +74,18 @@ function OrdersList() {
         title="Orders"
         description="Every total here was calculated by the server and frozen on the order. Payments are sandbox-only in this build."
         actions={
-          can('orders.manage') && (
-            <Link className="uc-btn" data-variant="primary" href={`/t/${tenantId}/orders/new`}>
-              New order
-            </Link>
-          )
+          <>
+            <Button onClick={() => void exportCsv()}>Export CSV</Button>
+            {can('orders.manage') && (
+              <Link className="uc-btn" data-variant="primary" href={`/t/${tenantId}/orders/new`}>
+                New order
+              </Link>
+            )}
+          </>
         }
       />
       <OrdersTabs />
+      {exportError && <Alert tone="danger">{exportError}</Alert>}
       <Card>
         <div className="uc-filters" role="search">
           <TextField

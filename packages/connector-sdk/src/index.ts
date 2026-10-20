@@ -9,6 +9,7 @@ export * from './mapping';
 export * from './files';
 export * from './simulator';
 export * from './adapters';
+export * from './providers';
 
 export interface SourceRow {
   rowNo: number;

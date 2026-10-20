@@ -18,7 +18,11 @@ import {
 } from '../../common/decorators';
 import { AppError, Errors } from '../../common/errors';
 import type { AppRequest } from '../../common/request';
+import { users } from '@uc/db';
+import { eq } from 'drizzle-orm';
+import { DbService } from '../../db/db.service';
 import { SessionService } from '../auth/session.service';
+import { ApiKeysService } from '../ops/api-keys.service';
 import { AccessService } from './access.service';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -99,8 +103,35 @@ abstract class SessionGuard implements CanActivate {
 @Injectable()
 export class MerchantSessionGuard extends SessionGuard {
   protected readonly audience = 'merchant' as const;
-  constructor(sessions: SessionService) {
+  constructor(
+    sessions: SessionService,
+    private readonly keys: ApiKeysService,
+    private readonly db: DbService,
+  ) {
     super(sessions);
+  }
+
+  /** Session cookie, or (Phase 11) `Authorization: Bearer uc_key_…` for a read-only API key. */
+  override async canActivate(context: ExecutionContext): Promise<boolean> {
+    const req = context.switchToHttp().getRequest<AppRequest>();
+    const header = req.header('authorization');
+    if (!header) return super.canActivate(context);
+    const token = /^Bearer\s+(\S+)$/i.exec(header)?.[1];
+    const key = token ? await this.keys.resolve(token) : null;
+    if (!key) throw Errors.unauthenticated('The API key is invalid, revoked or expired');
+    const [user] = await this.db.system((tx) => tx.select().from(users).where(eq(users.id, key.createdBy)));
+    if (!user || user.status !== 'active')
+      throw Errors.unauthenticated('The API key owner is no longer active');
+    req.auth = {
+      userId: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      sessionId: `api-key:${key.id}`,
+      audience: 'merchant',
+      sessionExpiresAt: key.expiresAt ?? new Date(Date.now() + 3600_000),
+    };
+    req.apiKey = { id: key.id, tenantId: key.tenantId, scopes: key.scopes };
+    return true;
   }
 }
 
@@ -123,6 +154,17 @@ export class TenantGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<AppRequest>();
     if (!req.auth) throw Errors.unauthenticated();
+    if (req.apiKey) {
+      // API keys are read-only and bound to one merchant; permissions = creator's ∩ key scopes.
+      if (!SAFE_METHODS.has(req.method)) throw Errors.forbidden('API keys are read-only');
+      const asked = req.header('x-tenant-id');
+      if (asked && asked.toLowerCase() !== req.apiKey.tenantId)
+        throw new AppError(403, 'TENANT_ACCESS_DENIED', 'This API key belongs to another merchant');
+      const state = await this.access.resolveTenant(req.auth.userId, req.apiKey.tenantId);
+      const scopes = new Set(req.apiKey.scopes);
+      req.tenant = { ...state, permissions: new Set([...state.permissions].filter((p) => scopes.has(p))) };
+      return true;
+    }
     let tenantId = req.header('x-tenant-id');
     // <img> requests cannot send headers: opted-in GET routes may name the tenant in ?tenantId= instead.
     // Membership is still validated exactly as for the header.

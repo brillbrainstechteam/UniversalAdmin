@@ -46,6 +46,9 @@ export const TENANT_PERMISSIONS = {
   'marketing.manage': { group: 'Marketing', label: 'Manage campaigns and segments', phase: 10 },
   'discounts.manage': { group: 'Marketing', label: 'Manage discounts', phase: 10 },
   'analytics.read': { group: 'Analytics', label: 'View reports', phase: 10 },
+  'operations.read': { group: 'Operations', label: 'View operations health', phase: 11 },
+  'webhooks.manage': { group: 'Operations', label: 'Manage outbound webhooks', phase: 11 },
+  'apikeys.manage': { group: 'Operations', label: 'Create and revoke API keys', phase: 11 },
 } as const satisfies Record<string, { group: string; label: string; phase: number }>;
 
 export type TenantPermission = keyof typeof TENANT_PERMISSIONS;

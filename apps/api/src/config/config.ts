@@ -3,6 +3,7 @@ import { z } from '@uc/contracts';
 
 const bool = z.enum(['true', 'false']).transform((v) => v === 'true');
 const DEV_PREVIEW_SECRET = 'dev-only-storefront-preview-signing-secret-0123';
+export const DEV_SECRETS_KEY = 'dev-only-secrets-encryption-key-change-me-0123456';
 
 const ConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -30,6 +31,8 @@ const ConfigSchema = z.object({
   // Sign-in throttling per 10-minute window (DB lockout still applies). Raise only for automated test runs.
   LOGIN_RATE_LIMIT_PER_IP: z.coerce.number().int().min(1).default(30),
   LOGIN_RATE_LIMIT_PER_EMAIL: z.coerce.number().int().min(1).default(15),
+  // Multiplies the per-IP storefront limits (carts, checkout, pay, quotes). Raise only for automated test runs.
+  STOREFRONT_RATE_LIMIT_MULTIPLIER: z.coerce.number().int().min(1).max(1000).default(1),
   // Phase 07 sandbox payment gateway (test double, never real money). Refused in production.
   PAYMENTS_SANDBOX_ENABLED: bool.default('true'),
   PAYMENTS_SANDBOX_SECRET: z
@@ -41,6 +44,13 @@ const ConfigSchema = z.object({
     .string()
     .min(32, 'PREVIEW_TOKEN_SECRET must be at least 32 characters')
     .default(DEV_PREVIEW_SECRET),
+  // Phase 11: AES-256-GCM key for secrets the platform must use itself (webhook signing keys, TOTP seeds).
+  SECRETS_ENCRYPTION_KEY: z
+    .string()
+    .min(32, 'SECRETS_ENCRYPTION_KEY must be at least 32 characters')
+    .default(DEV_SECRETS_KEY),
+  // Development/test only: lets webhooks target localhost receivers. Refused in production (SSRF guard).
+  WEBHOOKS_ALLOW_PRIVATE_TARGETS: bool.default('false'),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema> & {
@@ -70,6 +80,12 @@ export function loadConfig(
     throw new Error(
       'PAYMENTS_SANDBOX_ENABLED must be false in production (the sandbox gateway takes no real payments)',
     );
+  }
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.SECRETS_ENCRYPTION_KEY === DEV_SECRETS_KEY) {
+    throw new Error('SECRETS_ENCRYPTION_KEY must be set to a private value in production');
+  }
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.WEBHOOKS_ALLOW_PRIVATE_TARGETS) {
+    throw new Error('WEBHOOKS_ALLOW_PRIVATE_TARGETS must be false in production');
   }
   if (parsed.data.NODE_ENV === 'production' && parsed.data.PREVIEW_TOKEN_SECRET === DEV_PREVIEW_SECRET) {
     throw new Error('PREVIEW_TOKEN_SECRET must be set to a private value in production');

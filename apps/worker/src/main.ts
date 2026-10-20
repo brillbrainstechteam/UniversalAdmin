@@ -3,6 +3,7 @@ import pino from 'pino';
 import { lifecycleLogConsumer, startConsumerWorker } from './consumers';
 import { runIntegrationLoops } from './integration-jobs';
 import { runInventoryLoops } from './inventory-jobs';
+import { runWebhookLoop, webhookFanoutConsumer } from './ops-jobs';
 import { runOrderLoops } from './order-jobs';
 import { runPricingLoops } from './pricing-jobs';
 import { bullPublisher, createDomainEventsQueue, runRelayLoop } from './relay';
@@ -18,15 +19,21 @@ async function main(): Promise<void> {
   };
 
   const queue = createDomainEventsQueue(connection);
-  const worker = startConsumerWorker(db.db, [lifecycleLogConsumer(logger)], connection, logger);
+  const worker = startConsumerWorker(
+    db.db,
+    [lifecycleLogConsumer(logger), webhookFanoutConsumer()],
+    connection,
+    logger,
+  );
   const controller = new AbortController();
   const relay = runRelayLoop(db.db, bullPublisher(queue), logger, controller.signal);
   const inventory = runInventoryLoops(db.db, logger, controller.signal);
   const integrations = runIntegrationLoops(db.db, logger, controller.signal);
   const pricing = runPricingLoops(db.db, logger, controller.signal);
   const orderLoops = runOrderLoops(db.db, logger, controller.signal);
+  const webhooks = runWebhookLoop(db.db, logger, controller.signal);
   logger.info(
-    'worker started: outbox relay + domain-events consumers + inventory expiry/reconciliation + ERP order export + rate staleness + order expiry',
+    'worker started: outbox relay + domain-events consumers + inventory expiry/reconciliation + ERP order export + rate staleness + order expiry + webhook fan-out/delivery',
   );
 
   const shutdown = async (signal: string) => {
@@ -37,6 +44,7 @@ async function main(): Promise<void> {
     await integrations;
     await pricing;
     await orderLoops;
+    await webhooks;
     await worker.close();
     await queue.close();
     await db.close();

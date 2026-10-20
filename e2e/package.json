@@ -7,9 +7,12 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.10.1",
     "@playwright/test": "^1.49.1",
+    "@types/pg": "^8.11.10",
     "@uc/config": "workspace:*",
     "@uc/db": "workspace:*",
-    "ioredis": "^5.4.2"
+    "ioredis": "^5.4.2",
+    "pg": "^8.13.1"
   }
 }

@@ -1,7 +1,7 @@
 import type { TenantPermission } from './permissions';
 
 /** Platform phase whose modules are live in this build. Nav never shows modules from later phases. */
-export const IMPLEMENTED_PHASE = 10;
+export const IMPLEMENTED_PHASE = 11;
 
 export const FEATURES = {
   catalog: { label: 'Catalog', description: 'Products, variants, categories, collections' },
@@ -120,6 +120,7 @@ export const NAV_REGISTRY: NavDefinition[] = [
   { key: 'online-store', label: 'Online Store', path: '/online-store', section: 'main', anyPermission: ['content.manage'], feature: 'online_store', phase: 10 },
   { key: 'integrations', label: 'Integrations', path: '/integrations', section: 'main', anyPermission: ['integrations.read'], feature: 'integrations', phase: 5 },
   { key: 'automations', label: 'Automations', path: '/automations', section: 'main', anyPermission: ['integrations.manage'], feature: 'automations', phase: 11 },
+  { key: 'operations', label: 'Operations', path: '/operations', section: 'main', anyPermission: ['operations.read'], phase: 11 },
   { key: 'audit', label: 'Audit log', path: '/audit', section: 'main', anyPermission: ['audit.read'], phase: 1 },
   { key: 'settings-general', label: 'General', path: '/settings/general', section: 'settings', anyPermission: ['settings.read'], phase: 1 },
   { key: 'settings-stores', label: 'Stores & channels', path: '/settings/stores', section: 'settings', anyPermission: ['stores.read'], phase: 1 },
@@ -128,6 +129,9 @@ export const NAV_REGISTRY: NavDefinition[] = [
   { key: 'settings-jewellery', label: 'Jewellery', path: '/settings/jewellery', section: 'settings', anyPermission: ['catalog.read'], feature: 'jewellery', phase: 3 },
   { key: 'settings-staff', label: 'Staff', path: '/settings/staff', section: 'settings', anyPermission: ['staff.read'], phase: 1 },
   { key: 'settings-roles', label: 'Roles', path: '/settings/roles', section: 'settings', anyPermission: ['roles.read'], phase: 1 },
+  { key: 'settings-security', label: 'Security', path: '/settings/security', section: 'settings', anyPermission: [], phase: 11 },
+  { key: 'settings-webhooks', label: 'Webhooks', path: '/settings/webhooks', section: 'settings', anyPermission: ['webhooks.manage'], phase: 11 },
+  { key: 'settings-api-keys', label: 'API keys', path: '/settings/api-keys', section: 'settings', anyPermission: ['apikeys.manage'], phase: 11 },
 ];
 
 export interface NavItem {

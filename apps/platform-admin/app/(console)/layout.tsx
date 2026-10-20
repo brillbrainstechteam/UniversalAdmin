@@ -24,6 +24,8 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
   const items = [
     { key: 'tenants', label: 'Tenants', href: '/tenants', show: me.can('platform.tenants.read') },
     { key: 'audit', label: 'Platform audit', href: '/audit', show: me.can('platform.audit.read') },
+    { key: 'operations', label: 'Operations', href: '/operations', show: me.can('platform.tenants.read') },
+    { key: 'security', label: 'My security', href: '/security', show: true },
   ].filter((i) => i.show);
   return (
     <AppShell

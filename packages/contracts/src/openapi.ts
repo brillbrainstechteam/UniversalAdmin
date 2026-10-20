@@ -16,6 +16,7 @@ import * as B from './dto/b2b';
 import * as F from './dto/fulfillment';
 import * as CU from './dto/customers';
 import * as G from './dto/growth';
+import * as OP from './dto/ops';
 
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 type Scope = 'auth' | 'admin' | 'platform' | 'storefront' | 'system';
@@ -31,7 +32,7 @@ export interface ApiRouteDoc {
   query?: z.AnyZodObject;
   body?: z.ZodTypeAny;
   response?: z.ZodTypeAny;
-  status?: 200 | 201 | 204;
+  status?: 200 | 201 | 202 | 204;
   errors?: number[];
   /** multipart/form-data upload with a single "file" field. */
   multipart?: boolean;
@@ -364,6 +365,37 @@ export const API_ROUTES: ApiRouteDoc[] = [
   { method: 'get', path: '/v1/storefront/pages/{slug}', scope: 'storefront', summary: 'A published page', params: z.object({ slug: G.PageSlug }), response: G.StorefrontPage, errors: [404] },
   { method: 'get', path: '/v1/storefront/redirects', scope: 'storefront', summary: 'Where an old path now lives', query: G.RedirectQuery, response: G.RedirectLookup, errors: [404] },
   { method: 'put', path: '/v1/storefront/carts/{id}/discount', scope: 'storefront', summary: 'Enter or clear a discount code; the cart is re-priced and says why a code does not apply', params: IdParam, body: G.ApplyDiscountCodeRequest, response: O.Cart, errors: [404, 409] },
+  // ---- Phase 11: operations ----
+  { method: 'post', path: '/v1/auth/mfa/verify', scope: 'auth', summary: 'Second step of sign-in: challenge token + TOTP or recovery code', body: OP.MfaVerifyRequest, response: A.MeResponse, errors: [400, 401] },
+  { method: 'get', path: '/v1/auth/mfa', scope: 'auth', summary: 'Two-step verification status of the signed-in staff member', response: OP.MfaStatus, errors: [401] },
+  { method: 'post', path: '/v1/auth/mfa/enroll', scope: 'auth', summary: 'Start enrolment (secret + otpauth URI)', response: OP.MfaEnrollment, errors: [401, 409] },
+  { method: 'post', path: '/v1/auth/mfa/confirm', scope: 'auth', summary: 'Confirm enrolment with a code; returns recovery codes once', body: OP.MfaConfirmRequest, response: OP.MfaRecoveryCodes, errors: [401, 409, 422] },
+  { method: 'post', path: '/v1/auth/mfa/disable', scope: 'auth', summary: 'Turn off with password + code', body: OP.MfaDisableRequest, status: 204, errors: [401, 422] },
+  { method: 'get', path: '/v1/admin/webhooks', scope: 'admin', permission: 'webhooks.manage', summary: 'Webhook endpoints', response: z.object({ items: z.array(OP.WebhookEndpoint) }) },
+  { method: 'post', path: '/v1/admin/webhooks', scope: 'admin', permission: 'webhooks.manage', summary: 'Add an endpoint (signing secret returned once; private addresses refused)', body: OP.SaveWebhookEndpointRequest, response: OP.WebhookSecretResponse, status: 201, errors: [400, 422] },
+  { method: 'put', path: '/v1/admin/webhooks/{id}', scope: 'admin', permission: 'webhooks.manage', summary: 'Update an endpoint', params: IdParam, body: OP.SaveWebhookEndpointRequest, response: OP.WebhookEndpoint, errors: [400, 404, 409, 422] },
+  { method: 'post', path: '/v1/admin/webhooks/{id}/rotate-secret', scope: 'admin', permission: 'webhooks.manage', summary: 'New signing secret (returned once); the old one stops working', params: IdParam, response: OP.WebhookSecretResponse, errors: [404] },
+  { method: 'delete', path: '/v1/admin/webhooks/{id}', scope: 'admin', permission: 'webhooks.manage', summary: 'Remove an endpoint', params: IdParam, status: 204, errors: [404] },
+  { method: 'post', path: '/v1/admin/webhooks/{id}/test', scope: 'admin', permission: 'webhooks.manage', summary: 'Queue a signed test (Ping) delivery', params: IdParam, response: z.object({ deliveryId: Uuid }), status: 202, errors: [404] },
+  { method: 'get', path: '/v1/admin/webhooks/{id}/deliveries', scope: 'admin', permission: 'webhooks.manage', summary: 'Deliveries with attempts and last error', params: IdParam, query: OP.WebhookDeliveryQuery, response: OP.WebhookDeliveryPage, errors: [404] },
+  { method: 'post', path: '/v1/admin/webhook-deliveries/{id}/replay', scope: 'admin', permission: 'webhooks.manage', summary: 'Re-queue a failed or dead delivery', params: IdParam, response: z.object({ status: z.literal('pending') }), errors: [404, 409] },
+  { method: 'get', path: '/v1/admin/automations', scope: 'admin', permission: 'integrations.manage', summary: 'Automations with run counts', response: z.object({ items: z.array(OP.Automation) }) },
+  { method: 'post', path: '/v1/admin/automations', scope: 'admin', permission: 'integrations.manage', summary: 'Create an automation (typed trigger, conditions, action)', body: OP.SaveAutomationRequest, response: OP.Automation, status: 201, errors: [400] },
+  { method: 'put', path: '/v1/admin/automations/{id}', scope: 'admin', permission: 'integrations.manage', summary: 'Update or pause an automation', params: IdParam, body: OP.SaveAutomationRequest, response: OP.Automation, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/automations/{id}/runs', scope: 'admin', permission: 'integrations.manage', summary: 'Latest runs', params: IdParam, response: z.object({ items: z.array(OP.AutomationRun) }), errors: [404] },
+  { method: 'get', path: '/v1/admin/notifications', scope: 'admin', summary: 'Staff inbox', response: OP.StaffNotificationList },
+  { method: 'post', path: '/v1/admin/notifications/read', scope: 'admin', summary: 'Mark notifications read', body: z.object({ ids: z.array(Uuid) }), response: OP.StaffNotificationList },
+  { method: 'get', path: '/v1/admin/api-keys', scope: 'admin', permission: 'apikeys.manage', summary: 'API keys (never the secret)', response: z.object({ items: z.array(OP.ApiKey) }) },
+  { method: 'post', path: '/v1/admin/api-keys', scope: 'admin', permission: 'apikeys.manage', summary: 'Create a read-only key (shown once)', body: OP.CreateApiKeyRequest, response: OP.CreatedApiKey, status: 201, errors: [400] },
+  { method: 'post', path: '/v1/admin/api-keys/{id}/revoke', scope: 'admin', permission: 'apikeys.manage', summary: 'Revoke a key', params: IdParam, response: OP.ApiKey, errors: [404] },
+  { method: 'get', path: '/v1/admin/operations/health', scope: 'admin', permission: 'operations.read', summary: 'Operations health checks with thresholds', response: OP.OpsHealth },
+  { method: 'get', path: '/v1/admin/operations/providers', scope: 'admin', permission: 'integrations.read', summary: 'Payment/shipping/notification providers and their real status', response: OP.ProviderList },
+  { method: 'get', path: '/v1/admin/security', scope: 'admin', permission: 'settings.read', summary: 'Merchant security settings', response: OP.MfaSettingRequest },
+  { method: 'put', path: '/v1/admin/security', scope: 'admin', permission: 'settings.manage', summary: 'Require two-step verification for owners and admins', body: OP.MfaSettingRequest, response: OP.MfaSettingRequest, errors: [409] },
+  { method: 'get', path: '/v1/admin/orders-export.csv', scope: 'admin', permission: 'orders.read', summary: 'Orders as CSV (list filters, up to 10 000 rows)', query: O.OrderListQuery.omit({ cursor: true, limit: true }) },
+  { method: 'get', path: '/v1/platform/operations/health', scope: 'platform', permission: 'platform.tenants.read', summary: 'Platform-wide operations health', response: OP.OpsHealth },
+  { method: 'get', path: '/v1/platform/operations/dead-events', scope: 'platform', permission: 'platform.tenants.read', summary: 'Events that failed to publish', response: OP.DeadEventList },
+  { method: 'post', path: '/v1/platform/operations/dead-events/{id}/replay', scope: 'platform', permission: 'platform.tenants.manage', summary: 'Re-queue a dead event (consumers dedupe by id)', params: IdParam, response: z.object({ status: z.literal('pending') }), errors: [404] },
 ];
 const SECURITY: Record<Scope, RouteConfig['security']> = {
   auth: [],
@@ -431,7 +463,7 @@ export function buildOpenApiDocument(
     openapi: '3.1.0',
     info: {
       title: 'Universal Commerce OS API',
-      version: '1.0.0-phase10',
+      version: '1.0.0-phase11',
       description:
         'Multi-tenant commerce platform API. Errors use {code,message,details,correlationId}. Decimals are strings; money is {amountMinor,currency}.',
     },

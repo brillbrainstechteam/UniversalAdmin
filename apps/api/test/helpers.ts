@@ -20,6 +20,8 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
       MERCHANT_ADMIN_URL: 'http://localhost:3100',
       S3_BUCKET: 'uc-test-media',
       S3_AUTO_CREATE_BUCKET: 'true',
+      // Every suite shares one client IP; storefront throttling itself is tested with explicit limits.
+      STOREFRONT_RATE_LIMIT_MULTIPLIER: '50',
     },
     { loginRateLimit: { perIp: 100_000, perEmail: 100_000, windowSeconds: 600 }, ...overrides },
   );

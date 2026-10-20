@@ -99,3 +99,14 @@ theme and menus; "Preview drafts" gives a 15-minute storefront link. Add a domai
 the storefront cart. **Marketing** → create a segment and a campaign, then "Prepare audience" (only consented
 customers; nothing is sent). **Analytics** → reports with formulas and CSV. Open the store with
 `?utm_source=newsletter` to see attribution.
+
+## Operations (Phase 11)
+- **Webhooks**: Settings → Webhooks. Locally, `WEBHOOKS_ALLOW_PRIVATE_TARGETS=true` (in `.env`) lets you point an
+  endpoint at `http://localhost:<port>`; the worker (`pnpm dev:worker`) delivers. Verify the signature with
+  HMAC-SHA256 of `"<t>.<raw body>"` using the secret shown once.
+- **API keys**: Settings → API keys; call `GET /v1/admin/orders` with `Authorization: Bearer <key>`.
+- **Two-step verification**: click your e-mail in the top bar → Account security; any authenticator app works.
+  Settings → Security can require it for owners/admins of the merchant.
+- **Operations**: merchant Operations page; platform console → Operations (dead events, replay).
+- **Backups**: `scripts/backup.sh uc_dev`, then `scripts/restore-drill.sh backups/<file>.dump uc_dev`.
+- **Performance fixtures**: `pnpm --filter @uc/api perf` (loads 5 000 products and 20 000 orders into `uc_test`).

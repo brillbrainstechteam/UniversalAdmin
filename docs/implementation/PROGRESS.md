@@ -11,8 +11,8 @@
 | 07 ORDERS | implemented, committed locally (675a9e4) | pending review | 307 unit/integration + 28 E2E passing; see [phase-07-ORDERS.md](phase-07-ORDERS.md) |
 | 08 B2B | implemented, committed locally (1668f1e) | pending review | 317 unit/integration + 30 E2E passing; see [phase-08-B2B.md](phase-08-B2B.md) |
 | 09 B2C | implemented, committed locally (2a6a327) | pending review | 327 unit/integration + 31 E2E passing; see [phase-09-B2C.md](phase-09-B2C.md) |
-| 10 CMS-GROWTH | implemented, awaiting review | pending | 341 unit/integration + 32 E2E passing; see [phase-10-CMS-GROWTH.md](phase-10-CMS-GROWTH.md) |
-| 11 OPERATIONS | not started | — | |
+| 10 CMS-GROWTH | implemented, committed locally (84546bb) | pending review | 341 unit/integration + 32 E2E passing; see [phase-10-CMS-GROWTH.md](phase-10-CMS-GROWTH.md) |
+| 11 OPERATIONS | implemented, awaiting review | pending | 351 unit/integration + 35 E2E passing; see [phase-11-OPERATIONS.md](phase-11-OPERATIONS.md) |
 | 12 LAUNCH | not started | — | |
 
 ## Checkpoint log
@@ -36,3 +36,5 @@
 - 2026-10-20 — Phase 09 implemented: storefront customers + consent, exact-piece storefront app, shipments, cancel unshipped items, returns, sandbox refunds, recorded customer messages. format/lint/typecheck/build/test (327)/e2e (31)/audit all exit 0. 4 defects found and fixed. Notifications, courier tracking, real refunds, invoices blocked. Not committed.
 - 2026-10-20 — Phase 09 committed locally (2a6a327, not pushed) with the user's permission.
 - 2026-10-20 — Phase 10 implemented: online-store content with versions/preview/rollback, DNS-verified domains, redirects, pre-tax promotions with locked usage limits, segments and consented campaign audiences (not sent), 7 reports with formulas and CSV, storefront content/codes/attribution. format/lint/typecheck/build/test (341)/e2e (32)/audit exit 0. One intermittent failure of Phase 07 test O-06 observed once (instrumented). Campaign sending, ad spend, custom-domain TLS blocked. Not committed.
+- 2026-10-20 — Phase 10 committed locally (84546bb, not pushed) with the user's permission.
+- 2026-10-20 — Phase 11 implemented: signed outbound webhooks with retries/dead/replay and SSRF checks, typed automations, staff inbox, read-only scoped API keys, TOTP MFA (staff and platform) with tenant requirement, operations health and dead-event replay, provider interfaces, orders CSV export, backup/restore drill (7/7 invariants), axe audit, performance baseline (5k products / 20k orders). format/lint/typecheck/build/test (351)/e2e (35)/audit exit 0. Storefront rate limits made configurable (test interference; likely cause of the intermittent O-06). Real providers, alert routing, managed PITR blocked. Not committed.

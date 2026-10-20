@@ -31,6 +31,8 @@ export interface AppRequest extends Request {
   auth?: AuthState;
   tenant?: TenantState;
   platform?: PlatformState;
+  /** Phase 11: set when the request authenticated with an API key (acts for the key's creator). */
+  apiKey?: { id: string; tenantId: string; scopes: readonly string[] };
 }
 
 /** Request metadata passed into services for audit/outbox. */

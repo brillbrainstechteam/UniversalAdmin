@@ -54,15 +54,19 @@ describe('configuration', () => {
     expect(() => loadConfig({ ...base, NODE_ENV: 'production', COOKIE_SECURE: 'true' })).toThrow(
       /PAYMENTS_SANDBOX_ENABLED/,
     );
-    // Content preview links must not be signed with the published development secret (ADR-025).
-    expect(() =>
-      loadConfig({
-        ...base,
-        NODE_ENV: 'production',
-        COOKIE_SECURE: 'true',
-        PAYMENTS_SANDBOX_ENABLED: 'false',
-      }),
-    ).toThrow(/PREVIEW_TOKEN_SECRET/);
+    // Secrets at rest and preview links must not use the published development keys (ADR-025, ADR-026).
+    const prod = {
+      ...base,
+      NODE_ENV: 'production',
+      COOKIE_SECURE: 'true',
+      PAYMENTS_SANDBOX_ENABLED: 'false',
+    };
+    expect(() => loadConfig(prod)).toThrow(/SECRETS_ENCRYPTION_KEY/);
+    const keyed = { ...prod, SECRETS_ENCRYPTION_KEY: 'a-private-secrets-key-for-production-000000001' };
+    expect(() => loadConfig({ ...keyed, WEBHOOKS_ALLOW_PRIVATE_TARGETS: 'true' })).toThrow(
+      /WEBHOOKS_ALLOW_PRIVATE_TARGETS/,
+    );
+    expect(() => loadConfig(keyed)).toThrow(/PREVIEW_TOKEN_SECRET/);
     expect(
       loadConfig({
         ...base,
@@ -70,6 +74,7 @@ describe('configuration', () => {
         COOKIE_SECURE: 'true',
         PAYMENTS_SANDBOX_ENABLED: 'false',
         PREVIEW_TOKEN_SECRET: 'a-private-preview-secret-for-production-0001',
+        SECRETS_ENCRYPTION_KEY: 'a-private-secrets-key-for-production-000000001',
       }).PAYMENTS_SANDBOX_ENABLED,
     ).toBe(false);
     expect(() => loadConfig({ ...base, PAYMENTS_SANDBOX_SECRET: 'short' })).toThrow(

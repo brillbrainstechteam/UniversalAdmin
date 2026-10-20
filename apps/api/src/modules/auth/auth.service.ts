@@ -31,6 +31,7 @@ import { DbService } from '../../db/db.service';
 import { RedisService } from '../../db/redis.service';
 import { AppError, Errors } from '../../common/errors';
 import type { AuthState, RequestMeta } from '../../common/request';
+import { MfaService } from './mfa.service';
 import { SessionService } from './session.service';
 
 // Pre-computed hash so unknown-email logins take as long as real ones (no account enumeration via timing).
@@ -43,7 +44,33 @@ export class AuthService {
     private readonly redis: RedisService,
     private readonly sessions: SessionService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    private readonly mfa: MfaService,
   ) {}
+
+  private async startSession(userId: string, audience: 'merchant' | 'platform', meta: RequestMeta) {
+    const [user] = await this.db.system((tx) => tx.select().from(users).where(eq(users.id, userId)));
+    const session = await this.sessions.create(userId, audience, meta);
+    const me = await this.me({
+      userId,
+      email: user!.email,
+      displayName: user!.displayName,
+      sessionId: session.sessionId,
+      audience,
+      sessionExpiresAt: session.expiresAt,
+    });
+    return { token: session.token, me };
+  }
+
+  /** Second step of a staff sign-in with two-step verification (Phase 11). */
+  async verifyMfa(
+    challengeToken: string,
+    code: string,
+    meta: RequestMeta,
+  ): Promise<{ token: string; me: MeResponse; audience: 'merchant' | 'platform' }> {
+    const { userId, audience } = await this.mfa.completeChallenge(challengeToken, code, meta);
+    if (audience !== 'merchant' && audience !== 'platform') throw Errors.unauthenticated();
+    return { ...(await this.startSession(userId, audience, meta)), audience };
+  }
 
   async login(input: LoginRequest, meta: RequestMeta): Promise<{ token: string; me: MeResponse }> {
     const user = await this.authenticate(input, meta, async (userId) => {
@@ -55,16 +82,12 @@ export class AuthService {
         throw Errors.forbidden('This account is not a platform operator');
       }
     });
-    const session = await this.sessions.create(user.id, input.audience, meta);
-    const me = await this.me({
-      userId: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      sessionId: session.sessionId,
-      audience: input.audience,
-      sessionExpiresAt: session.expiresAt,
-    });
-    return { token: session.token, me };
+    // Two-step verification: a correct password only earns a short-lived challenge (Phase 11, ADR-026).
+    if ((await this.mfa.factor(user.id))?.confirmedAt) {
+      const challenge = await this.mfa.challenge(user.id, input.audience);
+      throw new AppError(401, 'MFA_REQUIRED', 'Enter the code from your authenticator app', challenge);
+    }
+    return this.startSession(user.id, input.audience, meta);
   }
 
   /**

@@ -20,6 +20,7 @@ const apiEnv = {
   // The suite signs in many times from one IP; throttling itself is covered by API tests.
   LOGIN_RATE_LIMIT_PER_IP: '1000',
   LOGIN_RATE_LIMIT_PER_EMAIL: '1000',
+  STOREFRONT_RATE_LIMIT_MULTIPLIER: '50',
 };
 
 export default defineConfig({

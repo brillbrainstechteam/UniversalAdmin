@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { LogoutButton } from '../../../lib/logout';
+import { InboxLink } from '../../../lib/ops';
 import { TenantProvider, useAuthRedirect } from '../../../lib/tenant';
 
 export default function TenantLayout({ children }: { children: ReactNode }) {
@@ -28,16 +29,23 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
   if (context.error || !context.data) {
     const e = context.error;
     const title =
-      e instanceof ApiError && e.code === 'TENANT_SUSPENDED'
-        ? 'This merchant account is suspended'
-        : e instanceof ApiError && e.code === 'TENANT_ACCESS_DENIED'
-          ? 'You don’t have access to this merchant'
-          : null;
+      e instanceof ApiError && e.code === 'MFA_ENROLMENT_REQUIRED'
+        ? 'Two-step verification required'
+        : e instanceof ApiError && e.code === 'TENANT_SUSPENDED'
+          ? 'This merchant account is suspended'
+          : e instanceof ApiError && e.code === 'TENANT_ACCESS_DENIED'
+            ? 'You don’t have access to this merchant'
+            : null;
     return (
       <main className="uc-content" style={{ maxWidth: 640, margin: '0 auto' }}>
         {title ? (
           <Card title={title}>
             <p className="uc-muted">{(e as ApiError).message}</p>
+            {e instanceof ApiError && e.code === 'MFA_ENROLMENT_REQUIRED' && (
+              <p>
+                <Link href="/account/security">Set up two-step verification</Link>
+              </p>
+            )}
             <Link href="/">Choose another merchant</Link>
           </Card>
         ) : (
@@ -79,7 +87,10 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
             {ctx.membership.locationScope && (
               <Badge tone="info">{ctx.membership.locationScope.length} location(s) only</Badge>
             )}
-            <span className="uc-muted">{ctx.user.email}</span>
+            <InboxLink />
+            <Link href="/account/security" className="uc-muted">
+              {ctx.user.email}
+            </Link>
             <Link className="uc-btn" data-size="sm" href="/">
               Switch merchant
             </Link>

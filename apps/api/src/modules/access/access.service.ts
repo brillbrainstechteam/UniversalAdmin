@@ -13,6 +13,7 @@ import {
 import {
   membershipRoles,
   memberships,
+  mfaFactors,
   platformAdmins,
   roles,
   tenantEntitlements,
@@ -42,7 +43,12 @@ export class AccessService {
   async resolveTenant(userId: string, tenantId: string): Promise<TenantState> {
     const [tenant] = await this.db.system((tx) =>
       tx
-        .select({ id: tenants.id, status: tenants.status, preset: tenants.preset })
+        .select({
+          id: tenants.id,
+          status: tenants.status,
+          preset: tenants.preset,
+          requireMfa: tenants.requireMfaForAdmins,
+        })
         .from(tenants)
         .where(eq(tenants.id, tenantId)),
     );
@@ -73,6 +79,21 @@ export class AccessService {
         )
         .where(and(eq(membershipRoles.tenantId, tenantId), eq(membershipRoles.membershipId, membership.id)));
 
+      // Phase 11: owners/admins of a tenant that requires two-step verification must have it enrolled.
+      if (tenant.requireMfa && roleRows.some((r) => r.key === 'owner' || r.key === 'admin')) {
+        const [factor] = await this.db.system((sys) =>
+          sys
+            .select({ confirmedAt: mfaFactors.confirmedAt })
+            .from(mfaFactors)
+            .where(eq(mfaFactors.userId, userId)),
+        );
+        if (!factor?.confirmedAt)
+          throw new AppError(
+            403,
+            'MFA_ENROLMENT_REQUIRED',
+            'This merchant requires two-step verification for owners and admins. Turn it on in Account security.',
+          );
+      }
       const permissions = new Set<TenantPermission>();
       for (const role of roleRows)
         for (const p of role.permissions) if (isTenantPermission(p)) permissions.add(p);

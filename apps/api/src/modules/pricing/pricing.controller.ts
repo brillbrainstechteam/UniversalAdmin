@@ -1,4 +1,5 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
+import { APP_CONFIG, type AppConfig } from '../../config/config';
 import {
   ApproveRateRequest,
   CalculateRequest,
@@ -361,12 +362,19 @@ export class StorefrontPricingController {
     private readonly quotes: QuoteService,
     private readonly db: DbService,
     private readonly redis: RedisService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   @Post('pricing-quotes')
   @HttpCode(201)
   async quote(@Req() req: AppRequest, @Body(zod(StorefrontQuoteRequest)) body: StorefrontQuoteRequest) {
-    if (!(await this.redis.hit(`rl:sf-quote:${req.ip ?? 'unknown'}`, 60, 60)))
+    if (
+      !(await this.redis.hit(
+        `rl:sf-quote:${req.ip ?? 'unknown'}`,
+        60 * this.config.STOREFRONT_RATE_LIMIT_MULTIPLIER,
+        60,
+      ))
+    )
       throw new AppError(429, 'RATE_LIMITED', 'Too many price requests. Try again in a minute.');
     const { tenantId, channelId, preset } = await this.resolver.resolveContext(this.resolver.hostOf(req));
     const features = await this.db.tenant(tenantId, (tx) => loadFeatures(tx, tenantId, preset));

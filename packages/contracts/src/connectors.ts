@@ -166,3 +166,24 @@ export const BLOCKED_DEPENDENCIES: { area: string; item: string; waitingFor: str
   { area: 'B2B', item: 'GSTIN verification / e-invoicing', waitingFor: 'GSP access + accountant/legal sign-off (format check only until then)', phase: '08' },
   { area: 'B2B', item: 'ERP outstanding balances / credit', waitingFor: 'A live ERP adapter exposing receivables per customer', phase: '08' },
 ];
+
+/**
+ * Phase 11 gateway providers behind the SDK interfaces (payment, shipping, notification). Status is what actually
+ * exists in this build: `sandbox` = test double (no real money/messages), `blocked` = needs an account and keys.
+ */
+export const PROVIDERS: {
+  kind: 'payment' | 'shipping' | 'notification';
+  key: string;
+  name: string;
+  status: 'sandbox' | 'blocked' | 'not_configured';
+  capabilities: string[];
+  detail: string;
+}[] = [
+  { kind: 'payment', key: 'sandbox', name: 'Sandbox gateway', status: 'sandbox', capabilities: ['capture', 'refund', 'signed callbacks'], detail: 'Test double: no real money moves; refused in production.' },
+  { kind: 'payment', key: 'card_gateway', name: 'Card / UPI gateway', status: 'blocked', capabilities: ['capture', 'refund', 'signed callbacks'], detail: 'Needs a gateway merchant account, sandbox keys and a webhook signing secret.' },
+  { kind: 'shipping', key: 'courier_aggregator', name: 'Courier aggregator', status: 'blocked', capabilities: ['serviceability', 'rates', 'labels', 'tracking'], detail: 'Needs a courier/aggregator account and API keys. Until then carriers and tracking numbers are typed by staff.' },
+  { kind: 'notification', key: 'email', name: 'E-mail delivery', status: 'blocked', capabilities: ['transactional e-mail', 'campaign e-mail'], detail: 'Needs an e-mail provider account and a verified sender domain. Messages are recorded as not sent.' },
+  { kind: 'notification', key: 'sms', name: 'SMS', status: 'blocked', capabilities: ['transactional SMS', 'campaign SMS'], detail: 'Needs an SMS provider account and registered (DLT) templates.' },
+  { kind: 'notification', key: 'whatsapp', name: 'WhatsApp Business', status: 'blocked', capabilities: ['template messages'], detail: 'Needs a WhatsApp Business account and approved templates.' },
+];
+

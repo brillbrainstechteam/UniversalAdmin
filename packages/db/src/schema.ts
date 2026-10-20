@@ -100,6 +100,8 @@ export const tenants = pgTable(
     slug: text('slug').notNull(),
     displayName: text('display_name').notNull(),
     legalName: text('legal_name').notNull(),
+    /** Phase 11: owners/admins must have MFA enrolled before using the admin API. */
+    requireMfaForAdmins: boolean('require_mfa_for_admins').notNull().default(false),
     status: text('status', { enum: ['provisioning', 'active', 'suspended'] })
       .notNull()
       .default('provisioning'),

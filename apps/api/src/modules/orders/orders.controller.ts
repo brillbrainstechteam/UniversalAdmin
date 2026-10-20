@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Headers,
+  Inject,
   HttpCode,
   Param,
   Patch,
@@ -12,6 +13,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { APP_CONFIG, type AppConfig } from '../../config/config';
 import {
   AcceptQuotationRequest,
   ApplyDiscountCodeRequest,
@@ -254,10 +256,17 @@ export class StorefrontOrdersController {
     private readonly db: DbService,
     private readonly redis: RedisService,
     private readonly customers: CustomerAuthService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   private async scope(req: AppRequest, bucket: string, limit: number): Promise<StorefrontScope> {
-    if (!(await this.redis.hit(`rl:sf-${bucket}:${req.ip ?? 'unknown'}`, limit, 60)))
+    if (
+      !(await this.redis.hit(
+        `rl:sf-${bucket}:${req.ip ?? 'unknown'}`,
+        limit * this.config.STOREFRONT_RATE_LIMIT_MULTIPLIER,
+        60,
+      ))
+    )
       throw new AppError(429, 'RATE_LIMITED', 'Too many requests. Try again in a minute.');
     const { tenantId, channelId, preset } = await this.resolver.resolveContext(this.resolver.hostOf(req));
     const features = await this.db.tenant(tenantId, (tx) => loadFeatures(tx, tenantId, preset));

@@ -42,6 +42,10 @@ import {
 } from './modules/online-store/growth.controller';
 import { OnlineStoreService } from './modules/online-store/online-store.service';
 import { ReportsService } from './modules/reports/reports.service';
+import { ApiKeysService } from './modules/ops/api-keys.service';
+import { OpsController, PlatformOpsController } from './modules/ops/ops.controller';
+import { OpsService } from './modules/ops/ops.service';
+import { WebhooksService } from './modules/ops/webhooks.service';
 import { FulfillmentService } from './modules/fulfillment/fulfillment.service';
 import { RefundsService } from './modules/fulfillment/refunds.service';
 import { ReturnsService } from './modules/fulfillment/returns.service';
@@ -71,6 +75,7 @@ import {
 } from './modules/storefront/storefront-catalog.controller';
 import { AuthController } from './modules/auth/auth.controller';
 import { AuthService } from './modules/auth/auth.service';
+import { MfaService } from './modules/auth/mfa.service';
 import { SessionService } from './modules/auth/session.service';
 import { LocationController } from './modules/location/location.controller';
 import { LocationService } from './modules/location/location.service';
@@ -124,12 +129,15 @@ export class AppModule {
         MarketingController,
         ReportsController,
         StorefrontContentController,
+        OpsController,
+        PlatformOpsController,
         BuyerController,
       ],
       providers: [
         { provide: APP_GUARD, useClass: CsrfGuard },
         SessionService,
         AuthService,
+        MfaService,
         AccessService,
         MerchantSessionGuard,
         PlatformSessionGuard,
@@ -176,6 +184,9 @@ export class AppModule {
         MarketingService,
         OnlineStoreService,
         ReportsService,
+        ApiKeysService,
+        OpsService,
+        WebhooksService,
       ],
     };
   }

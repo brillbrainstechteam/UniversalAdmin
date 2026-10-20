@@ -24,6 +24,8 @@ if it were real. Update this file and that constant together when an item is unb
 | Marketing | Campaign sending (e-mail/SMS/WhatsApp) | Notification provider account, approved templates, sender domain | 10/11 | Consented audiences prepared; recipients "not sent" |
 | Marketing | Acquisition cost (CAC/ROAS) | Ad-spend import from ad platforms | 10+ | Attribution by UTM source only; no cost metrics shown |
 | Online store | TLS for custom domains | Hosting/CDN decision | 12 | DNS-verified domains resolve over the deployment's existing TLS |
+| Operations | Managed backups / point-in-time recovery | Hosting choice (managed Postgres with WAL archiving) | 11/12 | Logical dump + restore drill scripts; invariants check |
+| Operations | Alert routing (pager / e-mail / chat) | Operator tooling and notification provider | 11/12 | Health checks with thresholds in the admin and platform consoles; staff inbox |
 | B2B | ERP outstanding balances / credit | A live ERP adapter (see ERP rows) exposing receivables per customer | 08 | Commerce-side credit ledger; ERP-authority companies show "not synced" |
 
 Vendor outreach drafts: [VENDOR-OUTREACH.md](VENDOR-OUTREACH.md). Research: [ERP-VENDOR-RESEARCH.md](ERP-VENDOR-RESEARCH.md).

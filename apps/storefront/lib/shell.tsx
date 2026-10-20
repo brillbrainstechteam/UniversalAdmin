@@ -13,6 +13,16 @@ const FONTS = {
 } as const;
 const RADIUS = { none: '0', sm: '4px', md: '8px', lg: '14px' } as const;
 
+/** Black or white, whichever reads better on `hex` (WCAG relative luminance). */
+function readableOn(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return 1.05 / (l + 0.05) >= (l + 0.05) / 0.05 ? '#ffffff' : '#111111';
+}
+
 /** A menu or banner link: internal paths use client navigation; https links open normally. */
 function MenuLink({ href, children, style }: { href: string; children: ReactNode; style?: CSSProperties }) {
   return href.startsWith('/') ? (
@@ -81,7 +91,12 @@ export function Shell({ children }: { children: ReactNode }) {
       {banner && (
         <div
           role="note"
-          style={{ background: t.accentColor, color: '#fff', padding: '8px 16px', textAlign: 'center' }}
+          style={{
+            background: t.accentColor,
+            color: readableOn(t.accentColor),
+            padding: '8px 16px',
+            textAlign: 'center',
+          }}
         >
           {banner.linkHref ? (
             <MenuLink href={banner.linkHref} style={{ color: 'inherit', textDecoration: 'underline' }}>
@@ -92,7 +107,7 @@ export function Shell({ children }: { children: ReactNode }) {
           )}
         </div>
       )}
-      <header style={{ background: t.primaryColor, color: '#fff', padding: '12px 16px' }}>
+      <header style={{ background: t.primaryColor, color: readableOn(t.primaryColor), padding: '12px 16px' }}>
         <nav
           aria-label="Store"
           style={{

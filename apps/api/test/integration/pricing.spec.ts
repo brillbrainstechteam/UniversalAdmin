@@ -644,7 +644,7 @@ describe('storefront quotes, isolation and permissions (PR-11)', () => {
     const redis = new Redis(TEST_REDIS_URL);
     const keys = ['::ffff:127.0.0.1', '127.0.0.1', '::1'].map((ip) => `rl:sf-quote:${ip}`);
     try {
-      for (const k of keys) await redis.set(k, '1000', 'EX', 60);
+      for (const k of keys) await redis.set(k, '1000000', 'EX', 60);
       const r = await sf()
         .post('/v1/storefront/pricing-quotes')
         .set('Host', 'northwind.localhost')
