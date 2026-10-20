@@ -31,6 +31,8 @@ export interface StorefrontScope {
   tenantId: string;
   channelId: string;
   features: readonly FeatureKey[];
+  /** Phase 09: the signed-in customer placing the order (null for guests). */
+  customerId?: string | null;
 }
 
 type CartRow = typeof carts.$inferSelect;
@@ -223,6 +225,7 @@ export class CheckoutService {
         priceQuoteId: quote.id,
         cartId: cart.id,
         checkoutKey: key,
+        customerId: s.customerId ?? null,
         next: 'pending_payment',
         holdMinutes: settings.checkoutHoldMinutes,
         actorUserId: null,
@@ -292,6 +295,7 @@ export class CheckoutService {
       number: o.number,
       status: o.status,
       paymentStatus: o.paymentStatus,
+      fulfillmentStatus: o.fulfillmentStatus,
       currency: o.currency,
       totalMinor: o.totalMinor.toString(),
       lines: lines.map((l) => ({

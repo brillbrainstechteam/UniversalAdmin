@@ -13,6 +13,8 @@ import * as X from './dto/integrations';
 import * as P from './dto/pricing';
 import * as O from './dto/orders';
 import * as B from './dto/b2b';
+import * as F from './dto/fulfillment';
+import * as CU from './dto/customers';
 
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 type Scope = 'auth' | 'admin' | 'platform' | 'storefront' | 'system';
@@ -300,6 +302,34 @@ export const API_ROUTES: ApiRouteDoc[] = [
   { method: 'post', path: '/v1/storefront/b2b/rfqs/{id}/messages', scope: 'storefront', summary: 'Reply in the RFQ thread', params: IdParam, body: B.RfqMessageRequest, response: B.Rfq, errors: [401, 403, 404, 409] },
   { method: 'get', path: '/v1/storefront/b2b/quotations', scope: 'storefront', summary: 'Quotations for the company', response: z.object({ items: z.array(B.BuyerQuotation) }), errors: [401, 403] },
   { method: 'post', path: '/v1/storefront/b2b/quotations/{id}/accept', scope: 'storefront', summary: 'Accept all or some quoted lines → order at the frozen price', params: IdParam, body: B.BuyerAcceptQuotationRequest, response: B.BuyerOrder, status: 201, errors: [400, 401, 403, 404, 409] },
+  // ---- Phase 09: B2C retail ----
+  { method: 'get', path: '/v1/storefront/catalog/products/{slug}/pieces', scope: 'storefront', summary: 'In-stock pieces of a product with actual weights (buy one exact piece)', params: C.SlugParam, response: CU.StorefrontPieceList, errors: [404] },
+  { method: 'post', path: '/v1/storefront/account/register', scope: 'storefront', summary: 'Create a storefront customer account (marketing consent opt-in, recorded)', body: CU.RegisterCustomerRequest, response: CU.CustomerMe, status: 201, errors: [400, 403, 404, 409, 429] },
+  { method: 'post', path: '/v1/storefront/account/login', scope: 'storefront', summary: 'Customer sign-in (sets the storefront session cookie)', body: CU.CustomerLoginRequest, response: CU.CustomerMe, errors: [400, 401, 403, 404, 423, 429] },
+  { method: 'post', path: '/v1/storefront/account/logout', scope: 'storefront', summary: 'End the customer session', status: 204, errors: [403] },
+  { method: 'get', path: '/v1/storefront/account/me', scope: 'storefront', summary: 'Signed-in customer, preferences and return window', response: CU.CustomerMe, errors: [401, 404] },
+  { method: 'put', path: '/v1/storefront/account/profile', scope: 'storefront', summary: 'Update name/phone', body: CU.UpdateProfileRequest, response: CU.CustomerMe, errors: [400, 401, 403, 409] },
+  { method: 'put', path: '/v1/storefront/account/preferences', scope: 'storefront', summary: 'Change marketing preferences (appends consent events)', body: CU.UpdatePreferencesRequest, response: CU.CustomerMe, errors: [400, 401, 403] },
+  { method: 'get', path: '/v1/storefront/account/addresses', scope: 'storefront', summary: 'Saved addresses', response: z.object({ items: z.array(CU.CustomerAddress) }), errors: [401] },
+  { method: 'post', path: '/v1/storefront/account/addresses', scope: 'storefront', summary: 'Save an address', body: CU.SaveAddressRequest, response: z.object({ items: z.array(CU.CustomerAddress) }), status: 201, errors: [400, 401, 403, 422] },
+  { method: 'put', path: '/v1/storefront/account/addresses/{id}', scope: 'storefront', summary: 'Update a saved address', params: IdParam, body: CU.UpdateAddressRequest, response: z.object({ items: z.array(CU.CustomerAddress) }), errors: [400, 401, 403, 404, 409] },
+  { method: 'delete', path: '/v1/storefront/account/addresses/{id}', scope: 'storefront', summary: 'Delete a saved address', params: IdParam, response: z.object({ items: z.array(CU.CustomerAddress) }), errors: [401, 403, 404] },
+  { method: 'get', path: '/v1/storefront/account/orders', scope: 'storefront', summary: 'Orders placed by the signed-in customer', query: PageQuery, response: CU.CustomerOrderPage, errors: [401] },
+  { method: 'get', path: '/v1/storefront/account/orders/{id}', scope: 'storefront', summary: 'Own order with shipments, returns, refunds, messages', params: IdParam, response: CU.CustomerOrder, errors: [401, 404] },
+  { method: 'post', path: '/v1/storefront/account/orders/{id}/returns', scope: 'storefront', summary: 'Request a return of shipped items within the return window', params: IdParam, body: F.CreateReturnRequest, response: CU.CustomerOrder, status: 201, errors: [400, 401, 403, 404, 409, 422] },
+  { method: 'get', path: '/v1/admin/customers', scope: 'admin', permission: 'customers.read', summary: 'Storefront customers', query: CU.CustomerListQuery, response: CU.CustomerPage },
+  { method: 'get', path: '/v1/admin/customers/{id}', scope: 'admin', permission: 'customers.read', summary: 'Customer with consent history and addresses', params: IdParam, response: CU.CustomerDetail, errors: [404] },
+  { method: 'put', path: '/v1/admin/customers/{id}/status', scope: 'admin', permission: 'customers.manage', summary: 'Disable (ends sessions) or re-enable a customer', params: IdParam, body: CU.UpdateCustomerStatusRequest, response: CU.CustomerDetail, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/orders/{id}/shipments', scope: 'admin', permission: 'fulfillment.manage', summary: 'Pack a shipment from what is left to ship (partial allowed)', params: IdParam, body: F.CreateShipmentRequest, response: O.Order, status: 201, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/orders/{id}/shipments/{shipmentId}/ship', scope: 'admin', permission: 'fulfillment.manage', summary: 'Dispatch: stock leaves through the ledger; carrier/tracking typed manually (not tracked)', params: z.object({ id: Uuid, shipmentId: Uuid }), body: F.ShipShipmentRequest, response: O.Order, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/orders/{id}/shipments/{shipmentId}/deliver', scope: 'admin', permission: 'fulfillment.manage', summary: 'Mark delivered', params: z.object({ id: Uuid, shipmentId: Uuid }), body: F.ShipmentActionRequest, response: O.Order, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/orders/{id}/shipments/{shipmentId}/cancel', scope: 'admin', permission: 'fulfillment.manage', summary: 'Unpack a shipment that has not left', params: z.object({ id: Uuid, shipmentId: Uuid }), body: F.ShipmentActionRequest, response: O.Order, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/orders/{id}/cancel-remaining', scope: 'admin', permission: 'orders.manage', summary: 'Cancel unshipped items after a partial shipment (exact refund due)', params: IdParam, body: F.CancelRemainingRequest, response: O.Order, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/orders/{id}/returns', scope: 'admin', permission: 'fulfillment.manage', summary: 'Record a return for shipped items', params: IdParam, body: F.CreateReturnRequest, response: F.OrderReturn, status: 201, errors: [400, 404, 409, 422] },
+  { method: 'get', path: '/v1/admin/returns', scope: 'admin', permission: 'orders.read', summary: 'Returns', query: F.ReturnListQuery, response: F.ReturnPage },
+  { method: 'post', path: '/v1/admin/returns/{id}/decide', scope: 'admin', permission: 'fulfillment.manage', summary: 'Approve or reject a return', params: IdParam, body: F.DecideReturnRequest, response: F.OrderReturn, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/returns/{id}/receive', scope: 'admin', permission: 'fulfillment.manage', summary: 'Receive a return: restock (ledger return_receive) or write off', params: IdParam, body: F.ReceiveReturnRequest, response: F.OrderReturn, errors: [400, 404, 409, 422] },
+  { method: 'post', path: '/v1/admin/orders/{id}/refunds', scope: 'admin', permission: 'payments.refund', summary: 'Refund up to captured minus refunded; settled by the (sandbox) gateway callback', params: IdParam, body: F.CreateRefundRequest, response: O.Order, status: 201, idempotent: true, errors: [400, 403, 404, 409] },
 ];
 const SECURITY: Record<Scope, RouteConfig['security']> = {
   auth: [],
@@ -367,7 +397,7 @@ export function buildOpenApiDocument(
     openapi: '3.1.0',
     info: {
       title: 'Universal Commerce OS API',
-      version: '1.0.0-phase08',
+      version: '1.0.0-phase09',
       description:
         'Multi-tenant commerce platform API. Errors use {code,message,details,correlationId}. Decimals are strings; money is {amountMinor,currency}.',
     },

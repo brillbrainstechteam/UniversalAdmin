@@ -18,6 +18,8 @@ export * from './dto/integrations';
 export * from './dto/pricing';
 export * from './pricing-engine';
 export * from './rate-providers';
+export * from './dto/fulfillment';
 export * from './dto/orders';
+export * from './dto/customers';
 export * from './dto/b2b';
 export * from './openapi';

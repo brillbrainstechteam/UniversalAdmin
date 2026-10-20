@@ -1,10 +1,12 @@
 import { CONNECTORS } from '@uc/contracts';
 import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
 import type { Tx } from './client';
+import { recordCustomerMessage } from './messages';
 import { connections, outboundCommands } from './integrations-schema';
 import { InventoryError, commitReservation, releaseReservation, reserveStock } from './inventory';
 import { reservations } from './inventory-schema';
 import { creditEntries, rfqs } from './b2b-schema';
+import { shipments } from './b2c-schema';
 import { orderEvents, orderLines, orderSettings, orders, quotations } from './orders-schema';
 import { enqueueEvent } from './outbox';
 
@@ -25,27 +27,26 @@ interface Actor {
 export async function nextDocumentNumber(
   tx: Tx,
   tenantId: string,
-  kind: 'order' | 'quotation' | 'rfq',
+  kind: 'order' | 'quotation' | 'rfq' | 'return',
 ): Promise<string> {
   await tx.insert(orderSettings).values({ tenantId }).onConflictDoNothing();
+  const counters = {
+    order: { next: orderSettings.nextOrderNumber, set: 'nextOrderNumber', prefix: 'orderPrefix' },
+    quotation: {
+      next: orderSettings.nextQuotationNumber,
+      set: 'nextQuotationNumber',
+      prefix: 'quotationPrefix',
+    },
+    rfq: { next: orderSettings.nextRfqNumber, set: 'nextRfqNumber', prefix: 'rfqPrefix' },
+    return: { next: orderSettings.nextReturnNumber, set: 'nextReturnNumber', prefix: 'returnPrefix' },
+  } as const;
+  const c = counters[kind];
   const [row] = await tx
     .update(orderSettings)
-    .set(
-      kind === 'order'
-        ? { nextOrderNumber: sql`${orderSettings.nextOrderNumber} + 1` }
-        : kind === 'quotation'
-          ? { nextQuotationNumber: sql`${orderSettings.nextQuotationNumber} + 1` }
-          : { nextRfqNumber: sql`${orderSettings.nextRfqNumber} + 1` },
-    )
+    .set({ [c.set]: sql`${c.next} + 1` })
     .where(eq(orderSettings.tenantId, tenantId))
     .returning();
-  const [n, prefix] =
-    kind === 'order'
-      ? [row!.nextOrderNumber, row!.orderPrefix]
-      : kind === 'quotation'
-        ? [row!.nextQuotationNumber, row!.quotationPrefix]
-        : [row!.nextRfqNumber, row!.rfqPrefix];
-  return `${prefix}-${String(n - 1).padStart(6, '0')}`;
+  return `${row![c.prefix]}-${String(row![c.set] - 1).padStart(6, '0')}`;
 }
 
 export async function addOrderEvent(
@@ -236,6 +237,14 @@ export async function confirmOrder(
         currency: order.currency,
       },
     });
+    if (order.origin === 'storefront')
+      await recordCustomerMessage(tx, {
+        tenantId: order.tenantId,
+        order: updated!,
+        template: 'order_confirmed',
+        amountMinor: order.totalMinor,
+        now,
+      });
     const queued = await queueOrderExports(tx, updated!, actor.correlationId ?? null);
     if (queued)
       await addOrderEvent(tx, {
@@ -262,6 +271,17 @@ export async function cancelOrder(
   const now = actor.now ?? new Date();
   if (order.status === 'cancelled')
     throw new InventoryError(409, 'INVALID_STATE_TRANSITION', 'This order is already cancelled');
+  // Phase 09: goods that left cannot be "cancelled" — cancel the unshipped items and take a return instead.
+  if (order.fulfillmentStatus !== 'unfulfilled')
+    throw new InventoryError(
+      409,
+      'ORDER_SHIPPED',
+      `Order ${order.number} has shipped items; cancel the unshipped items and record a return instead`,
+    );
+  await tx
+    .update(shipments)
+    .set({ status: 'cancelled', cancelledAt: now, version: sql`${shipments.version} + 1`, updatedAt: now })
+    .where(and(eq(shipments.orderId, order.id), eq(shipments.status, 'packed')));
   const lines = await tx.select().from(orderLines).where(eq(orderLines.orderId, order.id));
   const resIds = lines.map((l) => l.reservationId).filter((x): x is string => !!x);
   const open = resIds.length
@@ -414,7 +434,7 @@ export async function acknowledgedCommitments(
 ): Promise<Map<string, string>> {
   if (!variantIds.length) return new Map();
   const rows = await tx.execute<{ variant_id: string; location_id: string; qty: string }>(sql`
-    select r.variant_id, r.location_id, sum(r.quantity)::text as qty
+    select r.variant_id, r.location_id, sum(r.quantity - r.fulfilled_quantity)::text as qty
       from reservations r
       join order_lines ol on ol.tenant_id = r.tenant_id and ol.reservation_id = r.id
       join orders o on o.id = ol.order_id

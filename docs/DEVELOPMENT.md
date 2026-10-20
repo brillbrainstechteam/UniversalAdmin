@@ -33,6 +33,7 @@ pnpm dev:platform   # http://localhost:3101
 | owner@northwind.demo | merchant admin | Northwind General (general commerce, no jewellery) — owner |
 | multi@demo.local | merchant admin | Aurum catalog editor + Northwind admin (tenant picker) |
 | buyer@shree.demo | buyer portal | Shree Jewels (DEMO), Aurum's wholesale customer — buyer for the Mumbai location, order limit ₹1,00,000 |
+| customer@lumiere.demo | storefront | Lumière (DEMO) storefront customer with a saved address (e-mail marketing opted in) |
 | approver@shree.demo | buyer portal | Shree Jewels (DEMO) — company approver (approves buyers' orders above their limit) |
 
 Each demo tenant has a small published demo catalog (products marked "Demo product" in their description).
@@ -46,7 +47,7 @@ Storefront resolver demo: `curl -H "Host: lumiere.localhost" http://localhost:41
 ```bash
 pnpm format:check && pnpm lint && pnpm typecheck
 pnpm test          # unit + migration + integration (resets the uc_test database)
-pnpm test:e2e      # Playwright; requires `pnpm build`; starts the API, both admins and the buyer portal itself
+pnpm test:e2e      # Playwright; requires `pnpm build`; starts the API, both admins, the buyer portal and the storefront itself
 pnpm openapi:generate   # regenerate docs/api/openapi.json after API contract changes
 ```
 Tests never touch `uc_dev`. Redis logical DBs: 0 dev, 1 API tests, 2 worker tests, 3 E2E. S3 buckets: uc-dev-media, uc-test-media, uc-e2e-media.
@@ -58,7 +59,7 @@ Tests never touch `uc_dev`. Redis logical DBs: 0 dev, 1 API tests, 2 worker test
   `DbService.tenant()`; `DbService.system()` is reserved for platform/auth/resolver/worker paths.
 
 ## Ports
-5440 Postgres · 6390 Redis · 9010 object store · 4100 API · 3100 merchant admin · 3101 platform admin · 3102 buyer portal.
+5440 Postgres · 6390 Redis · 9010 object store · 4100 API · 3100 merchant admin · 3101 platform admin · 3102 buyer portal · 3103 B2C storefront.
 
 ## Pricing demo (Phase 06)
 Aurum and Lumière have DEMO metal rates (illustrative, not market data) approved by a second person, and a published
@@ -82,3 +83,11 @@ quote → New request; answer it in the merchant admin under Companies → RFQ i
 "Send quotation" and accept some or all lines in the portal under Quotations. `approver@shree.demo` sees
 Approvals. Companies → Shree shows locations, buyers (invite link), and the credit ledger (record a payment or
 advance). The portal proxy reads `STOREFRONT_GATEWAY_KEY` from the environment or the repo `.env`.
+
+## B2C demo (Phase 09)
+`pnpm dev:store`, then open **http://northwind.localhost:3103** (general commerce, GBP) or
+**http://lumiere.localhost:3103** (jewellery: product pages list each in-stock piece with its actual weights).
+Register or sign in as `customer@lumiere.demo`, add to cart, check out, and pay with the SANDBOX buttons (no money
+moves). In the merchant admin the order page now has Fulfillment (pack → ship with a hand-typed carrier → deliver),
+Returns, Refunds (sandbox) and Customer messages (recorded, not sent); Orders → Returns lists return requests and
+Customers lists storefront accounts with their consent history.

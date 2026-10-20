@@ -219,7 +219,7 @@ export const SerialItem = z
     pieces: z.number().int(),
     status: SerialItemStatus,
     /** Physical stock state (Phase 04); pieces enter stock through an inventory receipt. */
-    stockState: z.enum(['not_received', 'in_stock', 'reserved', 'committed', 'in_transit', 'written_off']),
+    stockState: z.enum(['not_received', 'in_stock', 'reserved', 'committed', 'in_transit', 'written_off', 'shipped']),
     location: z.object({ id: Uuid, code: z.string(), name: z.string() }).nullable(),
     weightExceptionReason: z.string().nullable(),
     review: z.object({ by: z.string().nullable(), at: Timestamp, note: z.string().nullable() }).nullable(),
@@ -323,7 +323,7 @@ export const SerialItemListQuery = PageQuery.extend({
   variantId: Uuid.optional(),
   metal: Metal.optional(),
   purityId: Uuid.optional(),
-  stockState: z.enum(['not_received', 'in_stock', 'reserved', 'committed', 'in_transit', 'written_off']).optional(),
+  stockState: z.enum(['not_received', 'in_stock', 'reserved', 'committed', 'in_transit', 'written_off', 'shipped']).optional(),
   locationId: Uuid.optional(),
   sort: z.enum(['-createdAt', 'createdAt', 'serialTag', '-grossG', 'grossG']).default('-createdAt'),
 });

@@ -7,6 +7,7 @@ import { provisionTenantRecords, type ProvisionTenantInput } from './provisionin
 import { DEMO_CATALOG, seedDemoCatalog } from './seed-catalog';
 import { seedDemoSimulatorConnection } from './seed-integrations';
 import { seedDemoB2b } from './seed-b2b';
+import { seedDemoCustomers } from './seed-b2c';
 import { seedDemoPricing } from './seed-pricing';
 import { DEMO_INVENTORY, seedDemoInventory } from './seed-inventory';
 import { DEMO_JEWELLERY, seedDemoJewellery } from './seed-jewellery';
@@ -296,6 +297,7 @@ export async function seedDemo(db: Db, password: string): Promise<SeedResult> {
       makerId: null,
       checkerId: u.lumiereOwner,
     });
+    await seedDemoCustomers(tx, { tenantId: lumiere.tenant.id, passwordHash });
     await seedDemoPricing(tx, {
       tenantId: northwind.tenant.id,
       currency: 'GBP',

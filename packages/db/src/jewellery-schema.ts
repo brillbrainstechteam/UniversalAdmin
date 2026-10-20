@@ -152,7 +152,7 @@ export const serialItems = pgTable(
     /** Phase 04: where the piece is and its stock state (lifecycle status is separate). */
     locationId: uuid('location_id'),
     stockState: text('stock_state', {
-      enum: ['not_received', 'in_stock', 'reserved', 'committed', 'in_transit', 'written_off'],
+      enum: ['not_received', 'in_stock', 'reserved', 'committed', 'in_transit', 'written_off', 'shipped'],
     })
       .notNull()
       .default('not_received'),
@@ -205,7 +205,7 @@ export const serialItems = pgTable(
     foreignKey({ columns: [t.tenantId, t.locationId], foreignColumns: [locations.tenantId, locations.id] }),
     check(
       'serial_items_stock_state_ck',
-      sql`${t.stockState} in ('not_received','in_stock','reserved','committed','in_transit','written_off')`,
+      sql`${t.stockState} in ('not_received','in_stock','reserved','committed','in_transit','written_off','shipped')`,
     ),
     check(
       'serial_items_located_ck',

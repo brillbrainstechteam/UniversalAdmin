@@ -25,6 +25,14 @@ import { JewelleryService } from './modules/jewellery/jewellery.service';
 import { PricingController, StorefrontPricingController } from './modules/pricing/pricing.controller';
 import { PricingService } from './modules/pricing/pricing.service';
 import { BuyerController, CompaniesController } from './modules/b2b/b2b.controller';
+import { AccountService } from './modules/customers/account.service';
+import { CustomerAuthService } from './modules/customers/customer-auth.service';
+import { CustomersController, StorefrontAccountController } from './modules/customers/customers.controller';
+import { CustomersService } from './modules/customers/customers.service';
+import { FulfillmentController } from './modules/fulfillment/fulfillment.controller';
+import { FulfillmentService } from './modules/fulfillment/fulfillment.service';
+import { RefundsService } from './modules/fulfillment/refunds.service';
+import { ReturnsService } from './modules/fulfillment/returns.service';
 import { BuyerService } from './modules/b2b/buyer.service';
 import { CompaniesService } from './modules/b2b/companies.service';
 import { RfqsService } from './modules/b2b/rfqs.service';
@@ -96,6 +104,9 @@ export class AppModule {
         StorefrontOrdersController,
         PaymentWebhooksController,
         CompaniesController,
+        CustomersController,
+        StorefrontAccountController,
+        FulfillmentController,
         BuyerController,
       ],
       providers: [
@@ -137,6 +148,12 @@ export class AppModule {
         CompaniesService,
         RfqsService,
         BuyerService,
+        CustomerAuthService,
+        AccountService,
+        CustomersService,
+        FulfillmentService,
+        ReturnsService,
+        RefundsService,
       ],
     };
   }

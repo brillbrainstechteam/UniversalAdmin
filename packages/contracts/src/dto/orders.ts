@@ -1,6 +1,7 @@
 import { CurrencyCode, Email, PageQuery, Reason, Timestamp, Uuid, Version, pageOf } from '../common';
 import { z } from '../z';
 import { Address } from './admin';
+import { CustomerMessage, FulfillmentStatus, OrderReturn, Refund, Shipment } from './fulfillment';
 import { ActorRef } from './inventory';
 import { PriceQuote, QuoteLine, QuoteLineInput, StorefrontQuote } from './pricing';
 
@@ -22,7 +23,7 @@ export type Contact = z.infer<typeof Contact>;
 export const ORDER_STATUSES = ['awaiting_buyer_approval', 'awaiting_approval', 'pending_payment', 'confirmed', 'on_hold', 'cancelled'] as const;
 export const OrderStatus = z.enum(ORDER_STATUSES);
 export type OrderStatus = z.infer<typeof OrderStatus>;
-export const PaymentStatus = z.enum(['unpaid', 'pending', 'paid', 'failed', 'refund_due']);
+export const PaymentStatus = z.enum(['unpaid', 'pending', 'paid', 'failed', 'refund_due', 'partially_refunded', 'refunded']);
 export type PaymentStatus = z.infer<typeof PaymentStatus>;
 export const PaymentTerms = z.enum(['prepaid', 'on_account']);
 
@@ -36,6 +37,8 @@ export const OrderSettings = z
     quotationMaxDays: z.number().int(),
     orderPrefix: z.string(),
     quotationPrefix: z.string(),
+    /** Days after delivery (or dispatch) a return can be requested. A business setting, not legal advice. */
+    returnWindowDays: z.number().int(),
     version: Version,
     updatedAt: Timestamp,
   })
@@ -50,6 +53,7 @@ export const UpdateOrderSettingsRequest = z
     quotationMaxDays: z.number().int().min(1).max(90).optional(),
     orderPrefix: Prefix.optional(),
     quotationPrefix: Prefix.optional(),
+    returnWindowDays: z.number().int().min(0).max(365).optional(),
   })
   .openapi('UpdateOrderSettingsRequest');
 export type UpdateOrderSettingsRequest = z.infer<typeof UpdateOrderSettingsRequest>;
@@ -78,6 +82,8 @@ export const Payment = z
     amountMinor: MinorAmount,
     currency: CurrencyCode,
     failureReason: z.string().nullable(),
+    /** Refunds requested or completed against this payment. */
+    refundedMinor: MinorAmount,
     createdAt: Timestamp,
     updatedAt: Timestamp,
   })
@@ -97,6 +103,10 @@ export const OrderLine = z
     /** Frozen at order time: measurements, book, rule version, rate and full breakdown. Never recalculated. */
     priceSnapshot: QuoteLine,
     reservation: z.object({ id: Uuid, status: z.string(), locationName: z.string() }).nullable(),
+    /** Phase 09: units shipped, still to ship (committed and not in a shipment), and returned (received). */
+    shippedQuantity: z.number().int(),
+    shippableQuantity: z.number().int(),
+    returnedQuantity: z.number().int(),
   })
   .openapi('OrderLine');
 export type OrderLine = z.infer<typeof OrderLine>;
@@ -109,6 +119,7 @@ export const OrderSummary = z
     origin: z.enum(['storefront', 'admin', 'quotation']),
     status: OrderStatus,
     paymentStatus: PaymentStatus,
+    fulfillmentStatus: FulfillmentStatus,
     contactName: z.string(),
     contactEmail: z.string(),
     currency: CurrencyCode,
@@ -124,6 +135,8 @@ export const OrderListQuery = PageQuery.extend({
   paymentStatus: PaymentStatus.optional(),
   channelId: Uuid.optional(),
   origin: z.enum(['storefront', 'admin', 'quotation']).optional(),
+  fulfillmentStatus: FulfillmentStatus.optional(),
+  customerId: Uuid.optional(),
   q: z.string().trim().max(100).optional(),
 });
 export type OrderListQuery = z.infer<typeof OrderListQuery>;
@@ -151,6 +164,11 @@ export const Order = OrderSummary.extend({
   cancelReason: z.string().nullable(),
   expiresAt: Timestamp.nullable(),
   warnings: z.array(z.string()),
+  customer: z.object({ id: Uuid, name: z.string(), email: z.string() }).nullable(),
+  shipments: z.array(Shipment),
+  returns: z.array(OrderReturn),
+  refunds: z.array(Refund),
+  messages: z.array(CustomerMessage),
   version: Version,
 }).openapi('Order');
 export type Order = z.infer<typeof Order>;
@@ -211,6 +229,7 @@ export const StorefrontOrder = z
     number: z.string(),
     status: OrderStatus,
     paymentStatus: PaymentStatus,
+    fulfillmentStatus: FulfillmentStatus,
     currency: CurrencyCode,
     totalMinor: MinorAmount,
     lines: z.array(z.object({ title: z.string(), quantity: z.number().int(), totalMinor: MinorAmount })),
@@ -233,6 +252,8 @@ export const SandboxWebhook = z
   .object({
     eventId: z.string().min(8).max(100),
     paymentId: Uuid,
+    /** Phase 09: present when the callback settles a refund of this payment rather than the payment itself. */
+    refundId: Uuid.optional(),
     outcome: z.enum(['succeeded', 'failed']),
     amountMinor: MinorAmount,
     currency: CurrencyCode,

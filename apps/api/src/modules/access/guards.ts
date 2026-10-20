@@ -35,7 +35,8 @@ export class CsrfGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<AppRequest>();
     if (SAFE_METHODS.has(req.method)) return true;
-    if (/^\/v1\/storefront\/b2b\//.test(req.path)) return this.buyerPortal(req);
+    // Cookie-session storefront APIs: the B2B buyer portal and (Phase 09) the B2C customer account.
+    if (/^\/v1\/storefront\/(b2b|account)\//.test(req.path)) return this.buyerPortal(req);
     if (!/^\/v1\/(auth|admin|platform)\//.test(req.path)) return true;
     const origin = req.header('origin');
     if (origin && !this.config.ALLOWED_ORIGINS.includes(origin)) {
@@ -48,8 +49,8 @@ export class CsrfGuard implements CanActivate {
   }
 
   /**
-   * Buyer portal (cookie session on each merchant's own B2B domain): the CSRF header is required and an Origin, when
-   * sent, must be that same storefront domain.
+   * Storefront cookie sessions (buyer portal, customer account) on each merchant's own domain: the CSRF header is
+   * required and an Origin, when sent, must be that same storefront domain.
    */
   private buyerPortal(req: AppRequest): boolean {
     if (req.header('x-uc-csrf') !== '1')

@@ -43,6 +43,9 @@ export const MOVEMENT_TYPES = [
   'reservation_commit',
   'commitment_release',
   'write_off',
+  // Phase 09: goods leave with a shipment (on-hand and committed fall together) and come back on a return.
+  'shipment',
+  'return_receive',
 ] as const;
 
 export const stockSettings = pgTable(
@@ -183,7 +186,7 @@ export const stockMovements = pgTable(
     }),
     check(
       'stock_movements_type_ck',
-      sql`${t.type} in ('receipt','adjustment','condition_change','transfer_dispatch','transfer_receive','transfer_cancel','stocktake','reservation_hold','reservation_release','reservation_expire','reservation_commit','commitment_release','write_off')`,
+      sql`${t.type} in ('receipt','adjustment','condition_change','transfer_dispatch','transfer_receive','transfer_cancel','stocktake','reservation_hold','reservation_release','reservation_expire','reservation_commit','commitment_release','write_off','shipment','return_receive')`,
     ),
     check(
       'stock_movements_nonzero_ck',
@@ -224,9 +227,11 @@ export const reservations = pgTable(
     serialItemId: uuid('serial_item_id'),
     channelId: uuid('channel_id'),
     quantity: qty('quantity').notNull(),
-    status: text('status', { enum: ['held', 'committed', 'released', 'expired'] })
+    status: text('status', { enum: ['held', 'committed', 'released', 'expired', 'fulfilled'] })
       .notNull()
       .default('held'),
+    /** Phase 09: committed quantity already shipped; the rest is still committed. */
+    fulfilledQuantity: qty('fulfilled_quantity').notNull().default('0'),
     referenceType: text('reference_type', {
       enum: ['manual', 'cart', 'checkout', 'order', 'quote'],
     }).notNull(),
@@ -256,8 +261,15 @@ export const reservations = pgTable(
       columns: [t.tenantId, t.serialItemId],
       foreignColumns: [serialItems.tenantId, serialItems.id],
     }),
-    check('reservations_status_ck', sql`${t.status} in ('held','committed','released','expired')`),
+    check(
+      'reservations_status_ck',
+      sql`${t.status} in ('held','committed','released','expired','fulfilled')`,
+    ),
     check('reservations_qty_ck', sql`${t.quantity} > 0`),
+    check(
+      'reservations_fulfilled_ck',
+      sql`${t.fulfilledQuantity} >= 0 and ${t.fulfilledQuantity} <= ${t.quantity} and (${t.status} <> 'fulfilled' or ${t.fulfilledQuantity} = ${t.quantity})`,
+    ),
     check('reservations_hold_expiry_ck', sql`${t.status} <> 'held' or ${t.expiresAt} is not null`),
   ],
 );

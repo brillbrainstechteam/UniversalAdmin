@@ -43,6 +43,7 @@ import { RedisService } from '../../db/redis.service';
 import { loadFeatures } from '../access/access.service';
 import { AdminRoute } from '../access/guards';
 import { StorefrontResolver } from '../storefront/storefront.controller';
+import { CustomerAuthService } from '../customers/customer-auth.service';
 import { CheckoutService, type StorefrontScope } from './checkout.service';
 import { OrdersService } from './orders.service';
 import { PaymentsService } from './payments.service';
@@ -251,6 +252,7 @@ export class StorefrontOrdersController {
     private readonly idempotency: IdempotencyService,
     private readonly db: DbService,
     private readonly redis: RedisService,
+    private readonly customers: CustomerAuthService,
   ) {}
 
   private async scope(req: AppRequest, bucket: string, limit: number): Promise<StorefrontScope> {
@@ -294,6 +296,13 @@ export class StorefrontOrdersController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const scope = await this.scope(req, 'checkout', 20);
+    // A signed-in customer's order is linked to their account. Only with the CSRF header (a cookie alone never
+    // attributes an order); guests and other domains' sessions simply check out as guests.
+    if (req.header('x-uc-csrf') === '1') {
+      const shop = await this.customers.shop(req).catch(() => null);
+      const signedIn = shop ? await this.customers.resolve(shop, this.customers.tokenFrom(req)) : null;
+      if (signedIn) scope.customerId = signedIn.customer.id;
+    }
     const result = await this.idempotency.run(
       {
         scope: `storefront:${scope.tenantId}:cart:${body.cartId}`,

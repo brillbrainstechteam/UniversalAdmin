@@ -1,7 +1,17 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { SandboxWebhook } from '@uc/contracts';
-import { addOrderEvent, confirmOrder, enqueueEvent, orders, paymentEvents, payments, type Tx } from '@uc/db';
+import {
+  addOrderEvent,
+  confirmOrder,
+  enqueueEvent,
+  orders,
+  paymentEvents,
+  payments,
+  recordCustomerMessage,
+  refunds,
+  type Tx,
+} from '@uc/db';
 import { and, eq, sql } from 'drizzle-orm';
 import { APP_CONFIG, type AppConfig } from '../../config/config';
 import { AppError } from '../../common/errors';
@@ -24,7 +34,7 @@ export class PaymentsService {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
-  private requireSandbox() {
+  requireSandbox() {
     if (!this.config.PAYMENTS_SANDBOX_ENABLED)
       throw new AppError(
         403,
@@ -138,6 +148,7 @@ export class PaymentsService {
   private async apply(tx: Tx, tenantId: string, event: SandboxWebhook) {
     const [payment] = await tx.select().from(payments).where(eq(payments.id, event.paymentId)).for('update');
     if (!payment || payment.tenantId !== tenantId) throw new AppError(404, 'NOT_FOUND', 'Unknown payment');
+    if (event.refundId) return this.applyRefund(tx, tenantId, payment, event);
     if (payment.amountMinor.toString() !== event.amountMinor || payment.currency !== event.currency)
       throw new AppError(422, 'VALIDATION_FAILED', 'Callback amount does not match the payment');
     if (payment.status !== 'pending') return; // already settled by an earlier event
@@ -222,5 +233,107 @@ export class PaymentsService {
         at: now,
       });
     }
+  }
+
+  /** Settles a pending refund (Phase 09). A failure frees the reserved amount; success lowers the refund due. */
+  private async applyRefund(
+    tx: Tx,
+    tenantId: string,
+    payment: typeof payments.$inferSelect,
+    event: SandboxWebhook,
+  ) {
+    const [refund] = await tx.select().from(refunds).where(eq(refunds.id, event.refundId!)).for('update');
+    if (!refund || refund.tenantId !== tenantId || refund.paymentId !== payment.id)
+      throw new AppError(404, 'NOT_FOUND', 'Unknown refund');
+    if (refund.amountMinor.toString() !== event.amountMinor || refund.currency !== event.currency)
+      throw new AppError(422, 'VALIDATION_FAILED', 'Callback amount does not match the refund');
+    if (refund.status !== 'pending') return;
+    const now = new Date();
+    const [order] = await tx.select().from(orders).where(eq(orders.id, refund.orderId)).for('update');
+    if (event.outcome === 'failed') {
+      await tx
+        .update(refunds)
+        .set({
+          status: 'failed',
+          failureReason: 'Declined (sandbox)',
+          updatedAt: now,
+          version: sql`${refunds.version} + 1`,
+        })
+        .where(eq(refunds.id, refund.id));
+      await tx
+        .update(payments)
+        .set({
+          refundedMinor: sql`${payments.refundedMinor} - ${refund.amountMinor}`,
+          updatedAt: now,
+          version: sql`${payments.version} + 1`,
+        })
+        .where(eq(payments.id, payment.id));
+      await addOrderEvent(tx, {
+        tenantId,
+        orderId: order!.id,
+        type: 'refund_failed',
+        note: 'Declined by the sandbox gateway',
+        data: { refundId: refund.id, eventId: event.eventId },
+        at: now,
+      });
+      await enqueueEvent(tx, {
+        tenantId,
+        eventType: 'RefundFailed',
+        aggregateType: 'refund',
+        aggregateId: refund.id,
+        payload: { refundId: refund.id, orderId: order!.id },
+      });
+      return;
+    }
+    await tx
+      .update(refunds)
+      .set({ status: 'succeeded', updatedAt: now, version: sql`${refunds.version} + 1` })
+      .where(eq(refunds.id, refund.id));
+    // Payment status: refunds outstanding win; otherwise refunded once everything captured has come back.
+    const caps = await tx
+      .select()
+      .from(payments)
+      .where(and(eq(payments.orderId, order!.id), eq(payments.status, 'captured')));
+    const settled = await tx
+      .select({ amount: refunds.amountMinor })
+      .from(refunds)
+      .where(and(eq(refunds.orderId, order!.id), eq(refunds.status, 'succeeded')));
+    const capturedTotal = caps.reduce((a, p) => a + p.amountMinor, 0n);
+    const refundedTotal = settled.reduce((a, r) => a + r.amount, 0n);
+    const due = order!.refundDueMinor > refund.amountMinor ? order!.refundDueMinor - refund.amountMinor : 0n;
+    const paymentStatus =
+      due > 0n ? 'refund_due' : refundedTotal >= capturedTotal ? 'refunded' : 'partially_refunded';
+    await tx
+      .update(orders)
+      .set({ refundDueMinor: due, paymentStatus, updatedAt: now })
+      .where(eq(orders.id, order!.id));
+    await addOrderEvent(tx, {
+      tenantId,
+      orderId: order!.id,
+      type: 'refund_succeeded',
+      note: 'Refunded by the sandbox gateway (no real money)',
+      data: { refundId: refund.id, eventId: event.eventId, amountMinor: event.amountMinor },
+      at: now,
+    });
+    await enqueueEvent(tx, {
+      tenantId,
+      eventType: 'PaymentRefunded',
+      aggregateType: 'refund',
+      aggregateId: refund.id,
+      payload: {
+        refundId: refund.id,
+        paymentId: payment.id,
+        orderId: order!.id,
+        amountMinor: event.amountMinor,
+        sandbox: true,
+      },
+    });
+    await recordCustomerMessage(tx, {
+      tenantId,
+      order: order!,
+      template: 'refund_succeeded',
+      amountMinor: refund.amountMinor,
+      now,
+    });
   }
 }

@@ -21,6 +21,7 @@ import {
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { FulfillmentPanel, MessagesPanel, RefundsPanel, ReturnsPanel } from '../../../../../lib/fulfillment';
 import { ORIGIN_LABELS, OrdersTabs, Status } from '../../../../../lib/orders';
 import { QuoteLineView, money } from '../../../../../lib/pricing';
 import { useTenant, useTenantQuery } from '../../../../../lib/tenant';
@@ -37,6 +38,18 @@ const EVENT_LABELS: Record<string, string> = {
   rejected: 'Rejected (stock released)',
   expired: 'Expired (stock released)',
   refund_due: 'Refund due',
+  shipment_packed: 'Shipment packed',
+  shipment_shipped: 'Shipment dispatched (stock left)',
+  shipment_delivered: 'Shipment delivered',
+  shipment_cancelled: 'Shipment unpacked',
+  remaining_cancelled: 'Unshipped items cancelled (stock released)',
+  return_requested: 'Return requested',
+  return_approved: 'Return approved',
+  return_rejected: 'Return rejected',
+  return_received: 'Return received',
+  refund_requested: 'Refund requested (sandbox)',
+  refund_succeeded: 'Refund succeeded (sandbox)',
+  refund_failed: 'Refund declined',
 };
 
 export default function OrderPage() {
@@ -93,7 +106,7 @@ export default function OrderPage() {
                 <Button onClick={() => setDialog('reject')}>Reject</Button>
               </>
             )}
-            {o.status !== 'cancelled' && can('orders.manage') && (
+            {o.status !== 'cancelled' && o.fulfillmentStatus === 'unfulfilled' && can('orders.manage') && (
               <Button variant="danger" onClick={() => setDialog('cancel')}>
                 Cancel order
               </Button>
@@ -105,6 +118,10 @@ export default function OrderPage() {
       <div className="uc-row" style={{ flexWrap: 'wrap' }}>
         <Status value={o.status} />
         <Status value={o.paymentStatus} />
+        {o.status === 'confirmed' && <Status value={o.fulfillmentStatus} />}
+        {o.customer && (
+          <Link href={`/t/${tenantId}/customers/${o.customer.id}`}>Customer account: {o.customer.name}</Link>
+        )}
         <Badge>{o.paymentTerms === 'prepaid' ? 'Prepaid' : 'On account'}</Badge>
         {o.quotationId && (
           <Link href={`/t/${tenantId}/orders/quotations/${o.quotationId}`}>From quotation</Link>
@@ -123,7 +140,7 @@ export default function OrderPage() {
       )}
       {o.paymentStatus === 'refund_due' && (
         <Alert tone="warning" title="Refund due">
-          {m(o.refundDueMinor)} must be refunded to the customer (refunds are handled in a later phase).
+          {m(o.refundDueMinor)} must be refunded to the customer. Use Issue refund below.
         </Alert>
       )}
       {o.warnings.map((w) => (
@@ -241,6 +258,10 @@ export default function OrderPage() {
           />
         </Card>
       )}
+      <FulfillmentPanel order={o} />
+      <ReturnsPanel order={o} />
+      <RefundsPanel order={o} />
+      <MessagesPanel order={o} />
       <Card title="Timeline">
         <ol className="uc-stack" style={{ paddingLeft: 20 }}>
           {o.events.map((e) => (

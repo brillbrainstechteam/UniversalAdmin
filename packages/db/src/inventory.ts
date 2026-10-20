@@ -317,7 +317,7 @@ export async function setSerialState(
   tenantId: string,
   ids: readonly string[],
   from: readonly string[],
-  to: 'in_stock' | 'reserved' | 'committed' | 'in_transit' | 'written_off',
+  to: 'in_stock' | 'reserved' | 'committed' | 'in_transit' | 'written_off' | 'shipped',
   locationId?: string | null,
 ): Promise<void> {
   if (!ids.length) return;
@@ -394,6 +394,11 @@ async function eligibleLocations(
     ids = ids.filter((id) => set.has(id));
   }
   return new Set(ids);
+}
+
+/** Active locations that sell into `channelId` (its configured set, or all active locations). */
+export function channelSellingLocations(tx: Tx, tenantId: string, channelId: string): Promise<Set<string>> {
+  return eligibleLocations(tx, tenantId, channelId, null);
 }
 
 function sameRequest(r: ReservationRow, input: ReserveInput): boolean {
@@ -678,6 +683,11 @@ export async function releaseReservation(
     throw invalid('reason', 'Give a reason to release committed stock');
   }
   const wasHeld = r.status === 'held';
+  // A partly shipped commitment releases only what has not left the building (Phase 09).
+  const remaining = wasHeld ? r.quantity : qtySub(r.quantity, r.fulfilledQuantity);
+  if (!wasHeld && qtyCmp(remaining, '0') <= 0) {
+    throw new InventoryError(409, 'INVALID_STATE_TRANSITION', 'Everything in this commitment has shipped');
+  }
   await postMovements(tx, {
     tenantId: input.tenantId,
     type: wasHeld ? 'reservation_release' : 'commitment_release',
@@ -690,7 +700,7 @@ export async function releaseReservation(
         variantId: r.variantId,
         locationId: r.locationId,
         condition: 'sellable',
-        ...(wasHeld ? { reserved: qtyNeg(r.quantity) } : { committed: qtyNeg(r.quantity) }),
+        ...(wasHeld ? { reserved: qtyNeg(r.quantity) } : { committed: qtyNeg(remaining) }),
         serialItemId: r.serialItemId,
         reservationId: r.id,
       },
@@ -885,7 +895,7 @@ export async function reconcileInventory(
     with r as (
       select rs.tenant_id, rs.variant_id, rs.location_id,
              coalesce(sum(rs.quantity) filter (where rs.status = 'held'), 0) as held,
-             coalesce(sum(rs.quantity) filter (where rs.status = 'committed'), 0) as com
+             coalesce(sum(rs.quantity - rs.fulfilled_quantity) filter (where rs.status = 'committed'), 0) as com
       from reservations rs where rs.status in ('held', 'committed') and ${tenantCond('rs.tenant_id')} group by 1, 2, 3
     ), b as (select * from stock_balances sb where sb.condition = 'sellable' and ${tenantCond('sb.tenant_id')})
     select coalesce(b.tenant_id, r.tenant_id) as tenant_id, coalesce(b.variant_id, r.variant_id) as variant_id,

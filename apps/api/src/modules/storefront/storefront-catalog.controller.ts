@@ -6,11 +6,13 @@ import {
   type AttributeValues,
   type Page,
   type ProductOption,
+  type StorefrontPiece,
   type StorefrontProduct,
   type z,
 } from '@uc/contracts';
 import {
   categories,
+  channelSellingLocations,
   channelPublications,
   collectionProducts,
   collections,
@@ -19,6 +21,7 @@ import {
   mediaAssets,
   productMedia,
   products,
+  serialItems,
   variants,
   type Tx,
 } from '@uc/db';
@@ -210,6 +213,55 @@ export class StorefrontCatalogService {
     });
   }
 
+  /**
+   * Phase 09: in-stock pieces of a published product with their actual weights, so a shopper can buy one exact
+   * piece (cart line `serialItemId`). Only active pieces at locations that sell into this storefront's channel.
+   */
+  async pieces(req: AppRequest, slug: string): Promise<{ items: StorefrontPiece[] }> {
+    const { tenantId, channelId } = await this.scope(req);
+    return this.db.tenant(tenantId, async (tx) => {
+      const p = await this.findVisible(tx, tenantId, channelId, slug);
+      const vs = await tx
+        .select({ id: variants.id, sku: variants.sku })
+        .from(variants)
+        .where(and(eq(variants.productId, p.id), eq(variants.status, 'active')));
+      if (!vs.length) return { items: [] };
+      const selling = await channelSellingLocations(tx, tenantId, channelId);
+      const rows = await tx
+        .select({ s: serialItems, purity: purityDefinitions.label })
+        .from(serialItems)
+        .innerJoin(purityDefinitions, eq(purityDefinitions.id, serialItems.purityId))
+        .where(
+          and(
+            eq(serialItems.tenantId, tenantId),
+            inArray(
+              serialItems.variantId,
+              vs.map((v) => v.id),
+            ),
+            eq(serialItems.status, 'active'),
+            eq(serialItems.stockState, 'in_stock'),
+          ),
+        )
+        .orderBy(asc(serialItems.serialTag))
+        .limit(200);
+      return {
+        items: rows
+          .filter((r) => r.s.locationId && selling.has(r.s.locationId))
+          .map((r) => ({
+            id: r.s.id,
+            variantId: r.s.variantId,
+            sku: vs.find((v) => v.id === r.s.variantId)!.sku,
+            tag: r.s.serialTag,
+            metal: r.s.metal,
+            purity: r.purity,
+            grossG: r.s.grossG,
+            netG: r.s.netG,
+            stoneG: r.s.stoneG,
+          })),
+      };
+    });
+  }
+
   async categories(req: AppRequest) {
     const { tenantId } = await this.scope(req);
     const rows = await this.db.tenant(tenantId, (tx) =>
@@ -279,6 +331,11 @@ export class StorefrontCatalogController {
   @Get('catalog/products/:slug')
   product(@Req() req: AppRequest, @Param(zod(SlugParam)) p: z.infer<typeof SlugParam>) {
     return this.service.product(req, p.slug);
+  }
+
+  @Get('catalog/products/:slug/pieces')
+  pieces(@Req() req: AppRequest, @Param(zod(SlugParam)) p: z.infer<typeof SlugParam>) {
+    return this.service.pieces(req, p.slug);
   }
 
   @Get('catalog/categories')

@@ -18,6 +18,9 @@ if it were real. Update this file and that constant together when an item is unb
 | Shipping | Courier tracking | Courier / aggregator account + API keys | 09/11 | — |
 | Tax | GST/HSN rates and invoice format | Accountant validation of configured rules | 06/07 | Configurable rules flagged "pending validation" |
 | B2B | GSTIN verification / e-invoicing | GST Suvidha Provider (GSP) access + accountant/legal sign-off | 08 | GSTIN format check only, labelled "not verified" |
+| B2C | E-mail/SMS delivery, e-mail verification, password reset | A notification provider account (e-mail/SMS/WhatsApp) + approved templates | 09/11 | Messages recorded as "not sent"; accounts usable unverified |
+| B2C | Courier labels and live tracking | Courier/aggregator account + API keys | 09/11 | Carrier and tracking number typed by staff, labelled "not tracked" |
+| B2C | Invoices / credit notes | Accountant validation of GST invoice format | 09 | Order record and refund history only |
 | B2B | ERP outstanding balances / credit | A live ERP adapter (see ERP rows) exposing receivables per customer | 08 | Commerce-side credit ledger; ERP-authority companies show "not synced" |
 
 Vendor outreach drafts: [VENDOR-OUTREACH.md](VENDOR-OUTREACH.md). Research: [ERP-VENDOR-RESEARCH.md](ERP-VENDOR-RESEARCH.md).

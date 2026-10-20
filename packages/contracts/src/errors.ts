@@ -54,6 +54,10 @@ export const ErrorCodes = [
   'CREDIT_LIMIT_EXCEEDED',
   'MINIMUM_NOT_MET',
   'COMPANY_ON_HOLD',
+  'ORDER_SHIPPED',
+  'REFUND_EXCEEDS_CAPTURED',
+  'RETURN_WINDOW_CLOSED',
+  'EMAIL_TAKEN',
   'INTERNAL',
 ] as const;
 export type ErrorCode = (typeof ErrorCodes)[number];

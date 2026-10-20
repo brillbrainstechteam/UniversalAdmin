@@ -12,6 +12,7 @@ import { useTenant, useTenantQuery } from './tenant';
 const TABS = [
   { path: '', label: 'Orders' },
   { path: '/quotations', label: 'Quotations' },
+  { path: '/returns', label: 'Returns' },
   { path: '/settings', label: 'Settings' },
 ] as const;
 
@@ -29,6 +30,7 @@ export function OrdersTabs() {
             ? pathname === base ||
               (pathname.startsWith(`${base}/`) &&
                 !pathname.startsWith(`${base}/quotations`) &&
+                !pathname.startsWith(`${base}/returns`) &&
                 !pathname.startsWith(`${base}/settings`))
             : pathname.startsWith(href);
         return (
@@ -61,6 +63,20 @@ const STATUS_TONE: Record<string, 'success' | 'danger' | 'warning' | 'info' | un
   on_hold: 'danger',
   failed: 'danger',
   refund_due: 'danger',
+  fulfilled: 'success',
+  delivered: 'success',
+  succeeded: 'success',
+  received: 'success',
+  refunded: 'success',
+  partial: 'warning',
+  packed: 'info',
+  shipped: 'info',
+  requested: 'warning',
+  approved: 'info',
+  rejected: undefined,
+  partially_refunded: 'info',
+  not_sent: 'warning',
+  unfulfilled: undefined,
   cancelled: undefined,
   expired: undefined,
   unpaid: undefined,

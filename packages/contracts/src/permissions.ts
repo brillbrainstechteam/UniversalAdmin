@@ -55,7 +55,10 @@ export function isTenantPermission(value: string): value is TenantPermission {
   return Object.prototype.hasOwnProperty.call(TENANT_PERMISSIONS, value);
 }
 
-const readOnly = ALL_TENANT_PERMISSIONS.filter((p) => p.endsWith('.read') && p !== 'audit.read');
+// Customer personal data is not "non-sensitive": viewers do not get customers.read (Phase 09).
+const readOnly = ALL_TENANT_PERMISSIONS.filter(
+  (p) => p.endsWith('.read') && p !== 'audit.read' && p !== 'customers.read',
+);
 
 /** System role templates seeded into every tenant (read-only in the UI). */
 export const SYSTEM_ROLES: Record<string, { name: string; description: string; permissions: TenantPermission[] }> =

@@ -142,6 +142,8 @@ export class OrdersService {
         eq(orders.tenantId, ctx.tenantId),
         q.status ? eq(orders.status, q.status) : undefined,
         q.paymentStatus ? eq(orders.paymentStatus, q.paymentStatus) : undefined,
+        q.fulfillmentStatus ? eq(orders.fulfillmentStatus, q.fulfillmentStatus) : undefined,
+        q.customerId ? eq(orders.customerId, q.customerId) : undefined,
         q.channelId ? eq(orders.channelId, q.channelId) : undefined,
         q.origin ? eq(orders.origin, q.origin) : undefined,
       ];

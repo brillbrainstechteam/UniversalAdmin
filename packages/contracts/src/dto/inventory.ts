@@ -22,9 +22,19 @@ export const MovementType = z.enum([
   'reservation_commit',
   'commitment_release',
   'write_off',
+  'shipment',
+  'return_receive',
 ]);
 export type MovementType = z.infer<typeof MovementType>;
-export const SerialStockState = z.enum(['not_received', 'in_stock', 'reserved', 'committed', 'in_transit', 'written_off']);
+export const SerialStockState = z.enum([
+  'not_received',
+  'in_stock',
+  'reserved',
+  'committed',
+  'in_transit',
+  'written_off',
+  'shipped',
+]);
 
 /** Exact quantity as a decimal string (pieces must be whole; grams up to 6 dp). */
 export const Quantity = z
@@ -310,7 +320,7 @@ export type WriteOffRequest = z.infer<typeof WriteOffRequest>;
 
 // ---------------------------------------------------------------- reservations
 
-export const ReservationStatus = z.enum(['held', 'committed', 'released', 'expired']);
+export const ReservationStatus = z.enum(['held', 'committed', 'released', 'expired', 'fulfilled']);
 export const ReservationReferenceType = z.enum(['manual', 'cart', 'checkout', 'order', 'quote']);
 
 export const Reservation = z

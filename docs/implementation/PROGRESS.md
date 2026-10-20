@@ -9,8 +9,8 @@
 | 05 CONNECTORS | implemented; user asked to advance | advanced (committed locally 675a9e4) | 257 unit/integration + 21 E2E at the gate; see [phase-05-CONNECTORS.md](phase-05-CONNECTORS.md) |
 | 06 PRICING | implemented, committed locally (675a9e4) | pending review | 294 unit/integration + 25 E2E passing; see [phase-06-PRICING.md](phase-06-PRICING.md) |
 | 07 ORDERS | implemented, committed locally (675a9e4) | pending review | 307 unit/integration + 28 E2E passing; see [phase-07-ORDERS.md](phase-07-ORDERS.md) |
-| 08 B2B | implemented, awaiting review | pending | 317 unit/integration + 30 E2E passing; see [phase-08-B2B.md](phase-08-B2B.md) |
-| 09 B2C | not started | — | |
+| 08 B2B | implemented, committed locally (1668f1e) | pending review | 317 unit/integration + 30 E2E passing; see [phase-08-B2B.md](phase-08-B2B.md) |
+| 09 B2C | implemented, awaiting review | pending | 327 unit/integration + 31 E2E passing; see [phase-09-B2C.md](phase-09-B2C.md) |
 | 10 CMS-GROWTH | not started | — | |
 | 11 OPERATIONS | not started | — | |
 | 12 LAUNCH | not started | — | |
@@ -32,3 +32,5 @@
 - 2026-10-19 — Phase 07 implemented. format/lint/typecheck/build/test (307)/e2e (28)/audit all exit 0. 4 defects found by tests and fixed. Phase 05 carried P0 (ERP double subtract) fixed. Payment gateway blocked (sandbox only). Not committed.
 - 2026-10-20 — Phases 05–07 committed locally as one commit (675a9e4, not pushed) with the user's permission.
 - 2026-10-20 — Phase 08 implemented: companies, credit, buyer identity, RFQs, buyer portal app. format/lint/typecheck/build/test (317)/e2e (30)/audit all exit 0. GSTIN verification and ERP credit blocked. Not committed. Continuing to Phase 09.
+- 2026-10-20 — Phase 08 committed locally (1668f1e, not pushed) with the user's permission.
+- 2026-10-20 — Phase 09 implemented: storefront customers + consent, exact-piece storefront app, shipments, cancel unshipped items, returns, sandbox refunds, recorded customer messages. format/lint/typecheck/build/test (327)/e2e (31)/audit all exit 0. 4 defects found and fixed. Notifications, courier tracking, real refunds, invoices blocked. Not committed.

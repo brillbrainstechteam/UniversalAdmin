@@ -120,6 +120,20 @@
       "when": 1792436020438,
       "tag": "0016_b2b_security",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792442757056,
+      "tag": "0017_b2c",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792442779434,
+      "tag": "0018_b2c_security",
+      "breakpoints": true
     }
   ]
 }

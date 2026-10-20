@@ -5,6 +5,7 @@ import {
   channels,
   confirmOrder,
   connections,
+  customers,
   locations,
   nextDocumentNumber,
   orderEvents,
@@ -15,6 +16,7 @@ import {
   payments,
   reservations,
   reserveStock,
+  returns,
   users,
   type OrderRow,
   type Tx,
@@ -23,6 +25,13 @@ import { asc, desc, eq, inArray } from 'drizzle-orm';
 import { Errors } from '../../common/errors';
 import { iso } from '../../common/mappers';
 import type { TenantState } from '../../common/request';
+import {
+  lineProgress,
+  loadMessages,
+  loadRefunds,
+  loadShipments,
+  toReturns,
+} from '../fulfillment/fulfillment.common';
 
 export type SettingsRow = typeof orderSettings.$inferSelect;
 
@@ -43,6 +52,7 @@ export function toOrderSettings(r: SettingsRow): OrderSettings {
     quotationMaxDays: r.quotationMaxDays,
     orderPrefix: r.orderPrefix,
     quotationPrefix: r.quotationPrefix,
+    returnWindowDays: r.returnWindowDays,
     version: r.version,
     updatedAt: iso(r.updatedAt),
   };
@@ -64,6 +74,7 @@ export function toSummary(o: OrderRow, channelName: string | null, lineCount: nu
     origin: o.origin,
     status: o.status,
     paymentStatus: o.paymentStatus,
+    fulfillmentStatus: o.fulfillmentStatus,
     contactName: contact.name,
     contactEmail: contact.email,
     currency: o.currency,
@@ -101,6 +112,20 @@ export async function toOrder(tx: Tx, o: OrderRow): Promise<Order> {
     .from(outboundCommands)
     .innerJoin(connections, eq(connections.id, outboundCommands.connectionId))
     .where(eq(outboundCommands.reference, `ORDER:${o.number}`));
+  const [progress, shipmentList, returnRows, refundList, messageList, cust] = await Promise.all([
+    lineProgress(tx, lines),
+    loadShipments(tx, o.id, lines),
+    tx.select().from(returns).where(eq(returns.orderId, o.id)).orderBy(asc(returns.createdAt)),
+    loadRefunds(tx, o.id),
+    loadMessages(tx, o.id),
+    o.customerId
+      ? tx
+          .select({ id: customers.id, name: customers.displayName, email: customers.email })
+          .from(customers)
+          .where(eq(customers.id, o.customerId))
+      : Promise.resolve([]),
+  ]);
+  const returnList = await toReturns(tx, returnRows, new Map([[o.id, o]]));
   const actorIds = [
     ...new Set(
       [o.createdBy, o.approvedBy, ...events.map((e) => e.actorUserId)].filter((x): x is string => !!x),
@@ -139,6 +164,9 @@ export async function toOrder(tx: Tx, o: OrderRow): Promise<Order> {
         totalMinor: l.totalMinor.toString(),
         priceSnapshot: l.priceSnapshot as QuoteLine,
         reservation: h ? { id: h.id, status: h.status, locationName: h.location } : null,
+        shippedQuantity: progress.get(l.id)?.shipped ?? 0,
+        shippableQuantity: progress.get(l.id)?.shippable ?? 0,
+        returnedQuantity: progress.get(l.id)?.returned ?? 0,
       };
     }),
     payments: pays.map((p) => ({
@@ -148,6 +176,7 @@ export async function toOrder(tx: Tx, o: OrderRow): Promise<Order> {
       amountMinor: p.amountMinor.toString(),
       currency: p.currency,
       failureReason: p.failureReason,
+      refundedMinor: p.refundedMinor.toString(),
       createdAt: iso(p.createdAt),
       updatedAt: iso(p.updatedAt),
     })),
@@ -175,6 +204,11 @@ export async function toOrder(tx: Tx, o: OrderRow): Promise<Order> {
     cancelReason: o.cancelReason,
     expiresAt: o.expiresAt ? iso(o.expiresAt) : null,
     warnings: (o.warnings as string[]) ?? [],
+    customer: cust[0] ?? null,
+    shipments: shipmentList,
+    returns: returnList,
+    refunds: refundList,
+    messages: messageList,
     version: o.version,
   };
 }
@@ -200,6 +234,8 @@ export interface PlaceOrderInput {
   /** What happens after the holds are placed. */
   /** Phase 08 B2B: buying company, delivery location, buyer, purchase order number. */
   companyId?: string | null;
+  /** Phase 09: signed-in storefront customer. */
+  customerId?: string | null;
   companyLocationId?: string | null;
   buyerId?: string | null;
   poNumber?: string | null;
@@ -264,6 +300,7 @@ export async function placeOrder(tx: Tx, input: PlaceOrderInput): Promise<OrderR
       cartId: input.cartId ?? null,
       checkoutKey: input.checkoutKey ?? null,
       companyId: input.companyId ?? null,
+      customerId: input.customerId ?? null,
       companyLocationId: input.companyLocationId ?? null,
       buyerId: input.buyerId ?? null,
       poNumber: input.poNumber ?? null,

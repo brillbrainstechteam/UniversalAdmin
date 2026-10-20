@@ -53,6 +53,7 @@ export default function OrderSettingsPage() {
     days: '',
     orderPrefix: '',
     quotationPrefix: '',
+    returnDays: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -64,6 +65,7 @@ export default function OrderSettingsPage() {
         days: String(s.data.quotationMaxDays),
         orderPrefix: s.data.orderPrefix,
         quotationPrefix: s.data.quotationPrefix,
+        returnDays: String(s.data.returnWindowDays),
       });
   }, [s.data, mu]);
   const int = (v: string) => (/^\d{1,5}$/.test(v) ? Number.parseInt(v, 10) : -1);
@@ -80,6 +82,7 @@ export default function OrderSettingsPage() {
           quotationMaxDays: int(form.days),
           orderPrefix: form.orderPrefix.trim(),
           quotationPrefix: form.quotationPrefix.trim(),
+          returnWindowDays: int(form.returnDays),
         },
       });
     },
@@ -96,7 +99,7 @@ export default function OrderSettingsPage() {
     <>
       <PageHeader
         title="Order settings"
-        description="Approval, payment window, quotation validity and numbering."
+        description="Approval, payment window, quotation validity, returns and numbering."
       />
       <OrdersTabs />
       <Card
@@ -156,6 +159,15 @@ export default function OrderSettingsPage() {
                 disabled={!edit}
                 error={errors.quotationPrefix}
                 onChange={(e) => setForm({ ...form, quotationPrefix: e.target.value })}
+              />
+              <TextField
+                label="Return window (days)"
+                inputMode="numeric"
+                value={form.returnDays}
+                disabled={!edit}
+                error={errors.returnWindowDays}
+                onChange={(e) => setForm({ ...form, returnDays: e.target.value })}
+                hint="Days after delivery (or dispatch) a customer can request a return. Your policy — not legal advice."
               />
             </div>
             {save.error && Object.keys(errors).length === 0 && (

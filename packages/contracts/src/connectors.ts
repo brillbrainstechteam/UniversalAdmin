@@ -158,6 +158,8 @@ export const BLOCKED_DEPENDENCIES: { area: string; item: string; waitingFor: str
   { area: 'Pricing', item: 'Live metal-rate feed', waitingFor: 'Licensed rate provider + credentials (manual rates until then)', phase: '06' },
   { area: 'Payments', item: 'Payment gateway', waitingFor: 'Gateway account + sandbox keys', phase: '07/09' },
   { area: 'Shipping', item: 'Courier tracking', waitingFor: 'Courier/aggregator account + API keys', phase: '09/11' },
+  { area: 'B2C', item: 'E-mail/SMS delivery, e-mail verification, password reset', waitingFor: 'Notification provider account + approved templates (messages recorded as not sent)', phase: '09/11' },
+  { area: 'B2C', item: 'Invoices / credit notes', waitingFor: 'Accountant validation of GST invoice format', phase: '09' },
   { area: 'Tax', item: 'GST/HSN rates and invoice format', waitingFor: 'Accountant validation of configured rules', phase: '06/07' },
   { area: 'B2B', item: 'GSTIN verification / e-invoicing', waitingFor: 'GSP access + accountant/legal sign-off (format check only until then)', phase: '08' },
   { area: 'B2B', item: 'ERP outstanding balances / credit', waitingFor: 'A live ERP adapter exposing receivables per customer', phase: '08' },

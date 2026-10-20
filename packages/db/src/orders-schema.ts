@@ -43,12 +43,17 @@ export const orderSettings = pgTable(
     nextQuotationNumber: integer('next_quotation_number').notNull().default(1),
     rfqPrefix: text('rfq_prefix').notNull().default('RFQ'),
     nextRfqNumber: integer('next_rfq_number').notNull().default(1),
+    /** Phase 09: days after delivery (or dispatch) in which a return can be requested. Configurable, not legal advice. */
+    returnWindowDays: integer('return_window_days').notNull().default(14),
+    returnPrefix: text('return_prefix').notNull().default('RET'),
+    nextReturnNumber: integer('next_return_number').notNull().default(1),
     version: version(),
     updatedAt: ts('updated_at').notNull().defaultNow(),
   },
   (t) => [
     check('order_settings_hold_ck', sql`${t.checkoutHoldMinutes} between 5 and 1440`),
     check('order_settings_quotation_days_ck', sql`${t.quotationMaxDays} between 1 and 90`),
+    check('order_settings_return_days_ck', sql`${t.returnWindowDays} between 0 and 365`),
     check(
       'order_settings_threshold_ck',
       sql`${t.approvalThresholdMinor} is null or ${t.approvalThresholdMinor} >= 0`,
@@ -99,9 +104,17 @@ export const orders = pgTable(
         'cancelled',
       ],
     }).notNull(),
-    paymentStatus: text('payment_status', { enum: ['unpaid', 'pending', 'paid', 'failed', 'refund_due'] })
+    paymentStatus: text('payment_status', {
+      enum: ['unpaid', 'pending', 'paid', 'failed', 'refund_due', 'partially_refunded', 'refunded'],
+    })
       .notNull()
       .default('unpaid'),
+    /** Phase 09 fulfilment progress (shipments). */
+    fulfillmentStatus: text('fulfillment_status', { enum: ['unfulfilled', 'partial', 'fulfilled'] })
+      .notNull()
+      .default('unfulfilled'),
+    /** Phase 09: the signed-in storefront customer who placed the order (guest orders stay unlinked). */
+    customerId: uuid('customer_id'),
     paymentTerms: text('payment_terms', { enum: ['prepaid', 'on_account'] }).notNull(),
     currency: text('currency').notNull(),
     subtotalMinor: minor('subtotal_minor').notNull(),
@@ -150,6 +163,7 @@ export const orders = pgTable(
     index('orders_tenant_created_idx').on(t.tenantId, t.createdAt.desc()),
     index('orders_due_idx').on(t.status, t.expiresAt),
     index('orders_company_idx').on(t.companyId, t.createdAt.desc()),
+    index('orders_customer_idx').on(t.customerId, t.createdAt.desc()),
     foreignKey({ columns: [t.tenantId, t.channelId], foreignColumns: [channels.tenantId, channels.id] }),
     foreignKey({
       columns: [t.tenantId, t.priceQuoteId],
@@ -161,8 +175,9 @@ export const orders = pgTable(
     ),
     check(
       'orders_payment_status_ck',
-      sql`${t.paymentStatus} in ('unpaid','pending','paid','failed','refund_due')`,
+      sql`${t.paymentStatus} in ('unpaid','pending','paid','failed','refund_due','partially_refunded','refunded')`,
     ),
+    check('orders_fulfillment_ck', sql`${t.fulfillmentStatus} in ('unfulfilled','partial','fulfilled')`),
     check('orders_total_ck', sql`${t.totalMinor} = ${t.subtotalMinor} - ${t.discountMinor} + ${t.taxMinor}`),
     check('orders_refund_ck', sql`${t.refundDueMinor} >= 0 and ${t.refundDueMinor} <= ${t.totalMinor}`),
     check('orders_currency_ck', sql`${t.currency} ~ '^[A-Z]{3}$'`),
@@ -245,6 +260,10 @@ export const payments = pgTable(
     amountMinor: minor('amount_minor').notNull(),
     currency: text('currency').notNull(),
     failureReason: text('failure_reason'),
+    /** Phase 09: refunds requested or completed against this payment (pending + succeeded). */
+    refundedMinor: minor('refunded_minor')
+      .notNull()
+      .default(sql`0`),
     version: version(),
     createdAt: ts('created_at').notNull().defaultNow(),
     updatedAt: ts('updated_at').notNull().defaultNow(),
@@ -260,6 +279,10 @@ export const payments = pgTable(
     ),
     check('payments_status_ck', sql`${t.status} in ('pending','captured','failed')`),
     check('payments_amount_ck', sql`${t.amountMinor} > 0`),
+    check(
+      'payments_refunded_ck',
+      sql`${t.refundedMinor} >= 0 and ${t.refundedMinor} <= ${t.amountMinor} and (${t.refundedMinor} = 0 or ${t.status} = 'captured')`,
+    ),
   ],
 );
 
