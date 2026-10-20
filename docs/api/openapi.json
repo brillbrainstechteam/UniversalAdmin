@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Universal Commerce OS API",
-    "version": "1.0.0-phase11",
+    "version": "1.0.0-phase12",
     "description": "Multi-tenant commerce platform API. Errors use {code,message,details,correlationId}. Decimals are strings; money is {amountMinor,currency}."
   },
   "servers": [
@@ -99,6 +99,8 @@
               "MFA_INVALID",
               "MFA_ENROLMENT_REQUIRED",
               "UNSAFE_URL",
+              "PLAN_LIMIT_REACHED",
+              "SUPPORT_READ_ONLY",
               "INTERNAL"
             ]
           },
@@ -255,6 +257,48 @@
           "roles"
         ]
       },
+      "SupportSessionInfo": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "grantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          },
+          "readOnly": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "default": null,
+        "required": [
+          "grantId",
+          "tenantId",
+          "tenantName",
+          "reason",
+          "expiresAt",
+          "readOnly"
+        ]
+      },
       "MeResponse": {
         "type": "object",
         "properties": {
@@ -295,6 +339,9 @@
             "items": {
               "type": "string"
             }
+          },
+          "support": {
+            "$ref": "#/components/schemas/SupportSessionInfo"
           }
         },
         "required": [
@@ -587,6 +634,9 @@
             "items": {
               "$ref": "#/components/schemas/NavItem"
             }
+          },
+          "support": {
+            "$ref": "#/components/schemas/SupportSessionInfo"
           }
         },
         "required": [
@@ -2081,6 +2131,9 @@
           "isDemo": {
             "type": "boolean"
           },
+          "planKey": {
+            "type": "string"
+          },
           "version": {
             "type": "integer",
             "minimum": 0,
@@ -2112,6 +2165,7 @@
           "timezone",
           "defaultLocale",
           "isDemo",
+          "planKey",
           "version",
           "createdAt",
           "updatedAt",
@@ -2243,6 +2297,9 @@
           "isDemo": {
             "type": "boolean"
           },
+          "planKey": {
+            "type": "string"
+          },
           "version": {
             "type": "integer",
             "minimum": 0,
@@ -2322,6 +2379,7 @@
           "timezone",
           "defaultLocale",
           "isDemo",
+          "planKey",
           "version",
           "createdAt",
           "updatedAt",
@@ -2425,6 +2483,11 @@
           "isDemo": {
             "type": "boolean",
             "default": false
+          },
+          "planKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{1,39}$",
+            "default": "pilot"
           }
         },
         "required": [
@@ -21746,6 +21809,625 @@
         },
         "required": [
           "items"
+        ]
+      },
+      "UsageLine": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "products",
+              "staffSeats",
+              "locations",
+              "domains",
+              "ordersPerMonth"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "used": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "hard": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "near",
+              "at",
+              "over",
+              "unlimited"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "used",
+          "limit",
+          "hard",
+          "state"
+        ]
+      },
+      "PlanUsage": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plan": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "name",
+              "description"
+            ]
+          },
+          "usage": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsageLine"
+            }
+          },
+          "monthStart": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          },
+          "billing": {
+            "type": "string",
+            "enum": [
+              "not_connected"
+            ]
+          }
+        },
+        "required": [
+          "tenantId",
+          "plan",
+          "usage",
+          "monthStart",
+          "generatedAt",
+          "billing"
+        ]
+      },
+      "SetupStep": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "business_profile",
+              "location",
+              "store_channel",
+              "staff",
+              "products",
+              "metal_rates",
+              "payments",
+              "domain",
+              "catalog_source",
+              "first_order"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "done": {
+            "type": "boolean"
+          },
+          "optional": {
+            "type": "boolean"
+          },
+          "link": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "detail",
+          "done",
+          "optional",
+          "link"
+        ]
+      },
+      "SetupChecklist": {
+        "type": "object",
+        "properties": {
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SetupStep"
+            }
+          },
+          "requiredDone": {
+            "type": "integer"
+          },
+          "requiredTotal": {
+            "type": "integer"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          }
+        },
+        "required": [
+          "steps",
+          "requiredDone",
+          "requiredTotal",
+          "generatedAt"
+        ]
+      },
+      "PilotStep": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "done",
+              "todo",
+              "blocked",
+              "not_applicable"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "state",
+          "detail"
+        ]
+      },
+      "PilotChecklist": {
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "connectorKey": {
+            "type": "string"
+          },
+          "connectorLabel": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PilotStep"
+            }
+          },
+          "productionSupported": {
+            "type": "boolean"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          }
+        },
+        "required": [
+          "connectionId",
+          "connectorKey",
+          "connectorLabel",
+          "steps",
+          "productionSupported",
+          "generatedAt"
+        ]
+      },
+      "SupportGrant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "requestedBy": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "displayName"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "ticketRef": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "durationMinutes": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "approved",
+              "denied",
+              "revoked",
+              "expired"
+            ]
+          },
+          "decidedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decidedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          },
+          "decisionNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          },
+          "revokedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          },
+          "requestCount": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "tenantName",
+          "requestedBy",
+          "reason",
+          "ticketRef",
+          "durationMinutes",
+          "status",
+          "decidedBy",
+          "decidedAt",
+          "decisionNote",
+          "expiresAt",
+          "startedAt",
+          "revokedAt",
+          "requestCount",
+          "version",
+          "createdAt"
+        ]
+      },
+      "SupportGrantList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupportGrant"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "DecideSupportGrant": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "PlanLimits": {
+        "type": "object",
+        "properties": {
+          "products": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10000000
+          },
+          "staffSeats": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10000000
+          },
+          "locations": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10000000
+          },
+          "domains": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10000000
+          },
+          "ordersPerMonth": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10000000
+          }
+        },
+        "required": [
+          "products",
+          "staffSeats",
+          "locations",
+          "domains",
+          "ordersPerMonth"
+        ]
+      },
+      "Plan": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/PlanLimits"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "retired"
+            ]
+          },
+          "tenantCount": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "description",
+          "limits",
+          "status",
+          "tenantCount",
+          "version",
+          "updatedAt"
+        ]
+      },
+      "PlanList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Plan"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "SavePlanRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "default": ""
+          },
+          "limits": {
+            "$ref": "#/components/schemas/PlanLimits"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "retired"
+            ],
+            "default": "active"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optimistic-lock version"
+          }
+        },
+        "required": [
+          "name",
+          "limits"
+        ]
+      },
+      "AssignPlanRequest": {
+        "type": "object",
+        "properties": {
+          "planKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{1,39}$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "planKey",
+          "reason"
+        ]
+      },
+      "RequestSupportAccess": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "ticketRef": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": 15,
+            "maximum": 120,
+            "default": 60
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "SupportSessionStarted": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO-8601 timestamp"
+          },
+          "merchantAdminUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "expiresAt",
+          "merchantAdminUrl"
         ]
       }
     },
@@ -52968,6 +53650,1389 @@
             }
           },
           "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/plan": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Plan and live usage of this merchant",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanUsage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/setup": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Setup checklist computed from real records",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupChecklist"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/integrations/connections/{id}/pilot-checklist": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Pilot readiness of a connection (production support never claimed)",
+        "description": "Requires permission `integrations.read`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PilotChecklist"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/support-grants": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Platform support access requests",
+        "description": "Requires permission `support.manage`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportGrantList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/support-grants/{id}/approve": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Approve read-only support access for its duration",
+        "description": "Requires permission `support.manage`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideSupportGrant"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportGrant"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/support-grants/{id}/deny": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Deny a support access request",
+        "description": "Requires permission `support.manage`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideSupportGrant"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportGrant"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/support-grants/{id}/revoke": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "End support access now (signs the operator out)",
+        "description": "Requires permission `support.manage`.",
+        "security": [
+          {
+            "merchantSession": [],
+            "tenantHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportGrant"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/plans": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Plans with limits and tenant counts",
+        "description": "Requires permission `platform.tenants.read`.",
+        "security": [
+          {
+            "platformSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/plans/{key}": {
+      "put": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Create (no version) or update (version) a plan",
+        "description": "Requires permission `platform.plans.manage`.",
+        "security": [
+          {
+            "platformSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{1,39}$"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavePlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/tenants/{id}/usage": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Plan and live usage of a tenant",
+        "description": "Requires permission `platform.tenants.read`.",
+        "security": [
+          {
+            "platformSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanUsage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/tenants/{id}/plan": {
+      "put": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Assign a plan (audited, reason required)",
+        "description": "Requires permission `platform.plans.manage`.",
+        "security": [
+          {
+            "platformSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignPlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanUsage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/support-grants": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Support access requests",
+        "description": "Requires permission `platform.support.request`.",
+        "security": [
+          {
+            "platformSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "tenantId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportGrantList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/tenants/{id}/support-grants": {
+      "post": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Ask the merchant for time-limited read-only access",
+        "description": "Requires permission `platform.support.request`.",
+        "security": [
+          {
+            "platformSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestSupportAccess"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportGrant"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/support-grants/{id}/start": {
+      "post": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "One-time 60-second handoff link into the merchant admin (requester only, approved only)",
+        "description": "Requires permission `platform.support.request`.",
+        "security": [
+          {
+            "platformSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportSessionStarted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/support-grants/{id}/revoke": {
+      "post": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "End your own support access",
+        "description": "Requires permission `platform.support.request`.",
+        "security": [
+          {
+            "platformSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportGrant"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/support/redeem": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Redeem a support handoff code into a read-only merchant session",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": true,
+            "name": "x-uc-csrf",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenantId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "expiresAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "tenantId",
+                    "expiresAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
             "description": "Error",
             "content": {
               "application/json": {

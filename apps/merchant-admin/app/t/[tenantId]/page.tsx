@@ -3,6 +3,7 @@
 import { FEATURES, type HomeSummary } from '@uc/contracts';
 import { Badge, Card, ErrorState, LoadingState, PageHeader, formatDateTime } from '@uc/ui';
 import Link from 'next/link';
+import { SetupChecklistCard } from '../../../lib/launch';
 import { useTenant, useTenantQuery } from '../../../lib/tenant';
 
 export default function HomePage() {
@@ -45,22 +46,7 @@ export default function HomePage() {
               </div>
             ))}
           </section>
-          <Card title="Setup checklist">
-            <ul className="uc-stack" style={{ margin: 0, paddingLeft: 18 }}>
-              {home.data.setupChecklist.map((item) => (
-                <li key={item.key}>
-                  <span className="uc-row">
-                    <Badge tone={item.done ? 'success' : 'warning'}>{item.done ? 'Done' : 'To do'}</Badge>
-                    {item.path && !item.done ? (
-                      <Link href={`/t/${tenantId}${item.path}`}>{item.label}</Link>
-                    ) : (
-                      <span>{item.label}</span>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          <SetupChecklistCard compact />
           <Card title="Enabled capabilities">
             <p className="uc-muted" style={{ margin: 0 }}>
               Features entitled for this merchant by its plan/preset. Modules appear in navigation as each

@@ -3,6 +3,7 @@ import {
   effectiveFeatures,
   isTenantPermission,
   PLATFORM_ROLES,
+  SYSTEM_ROLES,
   type FeatureKey,
   type FeatureOverrides,
   type PlatformPermission,
@@ -18,12 +19,13 @@ import {
   roles,
   tenantEntitlements,
   tenants,
+  writeAudit,
   type Tx,
 } from '@uc/db';
 import { and, eq } from 'drizzle-orm';
 import { DbService } from '../../db/db.service';
 import { AppError } from '../../common/errors';
-import type { PlatformState, TenantState } from '../../common/request';
+import type { AppRequest, PlatformState, TenantState } from '../../common/request';
 
 export async function loadFeatures(tx: Tx, tenantId: string, preset: PresetKey): Promise<FeatureKey[]> {
   const overrides = await tx
@@ -108,6 +110,60 @@ export class AccessService {
         isOwner: roleRows.some((r) => r.key === 'owner'),
       };
     });
+  }
+
+  /**
+   * Phase 12 support session: the merchant's `viewer` permissions (read-only, no customer personal data, no audit
+   * log), never more. The grant was checked when the session was resolved.
+   */
+  async resolveSupport(grantId: string, tenantId: string): Promise<TenantState> {
+    const [tenant] = await this.db.system((tx) =>
+      tx
+        .select({ status: tenants.status, preset: tenants.preset })
+        .from(tenants)
+        .where(eq(tenants.id, tenantId)),
+    );
+    if (!tenant) throw new AppError(403, 'TENANT_ACCESS_DENIED', 'You are not a member of this merchant');
+    if (tenant.status !== 'active')
+      throw new AppError(
+        403,
+        'TENANT_SUSPENDED',
+        'This merchant account is suspended. Contact platform support.',
+      );
+    const permissions = new Set<TenantPermission>(
+      SYSTEM_ROLES.viewer!.permissions.filter((p) => p.endsWith('.read')),
+    );
+    return {
+      tenantId,
+      membershipId: grantId,
+      permissions,
+      features: await this.db.tenant(tenantId, (tx) => loadFeatures(tx, tenantId, tenant.preset)),
+      locationScope: null,
+      roleKeys: ['support'],
+      isOwner: false,
+    };
+  }
+
+  /** Every request made in a support session is recorded in the merchant's audit log. */
+  async auditSupportRequest(
+    userId: string,
+    grantId: string,
+    tenantId: string,
+    req: AppRequest,
+  ): Promise<void> {
+    await this.db.tenant(tenantId, (tx) =>
+      writeAudit(tx, {
+        tenantId,
+        actorType: 'platform',
+        actorUserId: userId,
+        action: 'support.request',
+        entityType: 'support_grant',
+        entityId: grantId,
+        newValues: { method: req.method, path: req.path },
+        correlationId: req.correlationId,
+        ip: req.ip ?? null,
+      }),
+    );
   }
 
   async resolvePlatform(userId: string): Promise<PlatformState | null> {

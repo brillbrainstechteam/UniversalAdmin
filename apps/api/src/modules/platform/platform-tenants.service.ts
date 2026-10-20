@@ -27,6 +27,7 @@ import {
   invitations,
   locations,
   memberships,
+  plans,
   provisionTenantRecords,
   sha256,
   stores,
@@ -80,6 +81,7 @@ export class PlatformTenantsService {
       timezone: row.timezone,
       defaultLocale: row.defaultLocale,
       isDemo: row.isDemo,
+      planKey: row.planKey,
       version: row.version,
       createdAt: iso(row.createdAt),
       updatedAt: iso(row.updatedAt),
@@ -202,6 +204,18 @@ export class PlatformTenantsService {
     meta: RequestMeta,
   ): Promise<CreateTenantResponse> {
     return this.db.system(async (tx) => {
+      const [plan] = await tx
+        .select({ status: plans.status })
+        .from(plans)
+        .where(eq(plans.key, input.planKey));
+      if (!plan || plan.status !== 'active')
+        throw Errors.unprocessable(
+          'VALIDATION_FAILED',
+          `Plan "${input.planKey}" does not exist or is retired`,
+          {
+            field: 'planKey',
+          },
+        );
       const provisioned = await provisionTenantRecords(tx, {
         slug: input.slug,
         displayName: input.displayName,
@@ -213,6 +227,7 @@ export class PlatformTenantsService {
         defaultLocale: input.defaultLocale,
         contactEmail: input.contactEmail,
         isDemo: input.isDemo,
+        planKey: input.planKey,
       });
       const tenantId = provisioned.tenant.id;
       const token = generateToken();

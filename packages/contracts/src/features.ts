@@ -1,7 +1,7 @@
 import type { TenantPermission } from './permissions';
 
 /** Platform phase whose modules are live in this build. Nav never shows modules from later phases. */
-export const IMPLEMENTED_PHASE = 11;
+export const IMPLEMENTED_PHASE = 12;
 
 export const FEATURES = {
   catalog: { label: 'Catalog', description: 'Products, variants, categories, collections' },
@@ -105,6 +105,7 @@ export interface NavDefinition {
 /** Merchant admin module registry in spec order (specs/00 UX principles). */
 export const NAV_REGISTRY: NavDefinition[] = [
   { key: 'home', label: 'Home', path: '', section: 'main', anyPermission: [], phase: 1 },
+  { key: 'setup', label: 'Setup guide', path: '/setup', section: 'main', anyPermission: [], phase: 12 },
   { key: 'orders', label: 'Orders', path: '/orders', section: 'main', anyPermission: ['orders.read'], feature: 'orders', phase: 7 },
   { key: 'products', label: 'Products', path: '/products', section: 'main', anyPermission: ['catalog.read'], feature: 'catalog', phase: 2 },
   { key: 'collections', label: 'Collections', path: '/collections', section: 'main', anyPermission: ['catalog.read'], feature: 'catalog', phase: 2 },
@@ -132,6 +133,8 @@ export const NAV_REGISTRY: NavDefinition[] = [
   { key: 'settings-security', label: 'Security', path: '/settings/security', section: 'settings', anyPermission: [], phase: 11 },
   { key: 'settings-webhooks', label: 'Webhooks', path: '/settings/webhooks', section: 'settings', anyPermission: ['webhooks.manage'], phase: 11 },
   { key: 'settings-api-keys', label: 'API keys', path: '/settings/api-keys', section: 'settings', anyPermission: ['apikeys.manage'], phase: 11 },
+  { key: 'settings-plan', label: 'Plan & usage', path: '/settings/plan', section: 'settings', anyPermission: [], phase: 12 },
+  { key: 'settings-support', label: 'Support access', path: '/settings/support', section: 'settings', anyPermission: ['support.manage'], phase: 12 },
 ];
 
 export interface NavItem {

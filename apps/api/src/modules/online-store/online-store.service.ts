@@ -34,6 +34,7 @@ import { iso } from '../../common/mappers';
 import type { AuthState, RequestMeta, TenantState } from '../../common/request';
 import { APP_CONFIG, type AppConfig } from '../../config/config';
 import { DbService } from '../../db/db.service';
+import { assertPlanCapacity } from '../launch/plans.service';
 
 type DocRow = typeof siteDocuments.$inferSelect;
 const PREVIEW_MS = 15 * 60_000;
@@ -630,6 +631,7 @@ export class OnlineStoreService {
     if (taken) throw Errors.duplicate('hostname', 'This domain is already connected to a store');
     return this.db.tenant(ctx.tenantId, async (tx) => {
       await this.storefrontChannel(tx, ctx.tenantId, input.channelId);
+      await assertPlanCapacity(tx, ctx.tenantId, 'domains');
       const [d] = await tx
         .insert(channelDomains)
         .values({

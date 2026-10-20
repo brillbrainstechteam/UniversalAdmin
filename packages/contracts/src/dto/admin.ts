@@ -1,3 +1,4 @@
+import { SupportSessionInfo } from './launch';
 import {
   Code,
   CountryCode,
@@ -41,6 +42,8 @@ export const AdminContext = z
     permissions: z.array(z.string()),
     features: z.array(FeatureKeySchema),
     nav: z.array(NavItemSchema),
+    /** Phase 12: present for a read-only platform support session (banner). */
+    support: SupportSessionInfo.nullable().default(null),
   })
   .openapi('AdminContext');
 export type AdminContext = z.infer<typeof AdminContext>;

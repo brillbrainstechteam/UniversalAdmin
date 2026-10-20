@@ -519,6 +519,15 @@ fieldset.uc-fieldset legend {
   border-bottom: 1px solid var(--uc-border);
 }
 
+/* Phase 12: read-only platform support session (always visible while it lasts). */
+.uc-support-banner {
+  background: var(--uc-danger-bg);
+  color: var(--uc-danger);
+  padding: 8px var(--uc-space-5);
+  font-size: 13px;
+  border-bottom: 2px solid var(--uc-danger);
+}
+
 /* ---------- table ---------- */
 .uc-table-wrap {
   overflow-x: auto;

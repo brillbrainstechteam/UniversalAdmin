@@ -40,6 +40,7 @@ export const DEMO = {
       defaultLocale: 'en-IN',
       contactEmail: 'contact@aurum.demo',
       isDemo: true,
+      planKey: 'pilot',
       domain: 'aurum-b2b.localhost',
       pendingDomain: 'pending-aurum.localhost',
     },
@@ -54,6 +55,7 @@ export const DEMO = {
       defaultLocale: 'en-IN',
       contactEmail: 'hello@lumiere.demo',
       isDemo: true,
+      planKey: 'growth',
       domain: 'lumiere.localhost',
     },
     northwind: {
@@ -67,6 +69,7 @@ export const DEMO = {
       defaultLocale: 'en-GB',
       contactEmail: 'shop@northwind.demo',
       isDemo: true,
+      planKey: 'pilot',
       domain: 'northwind.localhost',
     },
   },
@@ -149,6 +152,8 @@ export async function seedDemo(db: Db, password: string): Promise<SeedResult> {
         defaultLocale: rest.defaultLocale,
         contactEmail: rest.contactEmail,
         isDemo: rest.isDemo,
+        // Phase 12: plans are seeded by migration 0024; demo tenants show both an unlimited and a capped plan.
+        planKey: rest.planKey,
       };
       const p = await provisionTenantRecords(tx, input);
       provisioned[key] = p;

@@ -18,6 +18,7 @@ import {
   memberships,
   roles,
   stores,
+  supportGrants,
   tenants,
   users,
   writeAudit,
@@ -61,6 +62,27 @@ export class TenantAdminService {
           and(eq(membershipRoles.tenantId, ctx.tenantId), eq(membershipRoles.membershipId, ctx.membershipId)),
         );
       const permissions = [...ctx.permissions].sort();
+      // Phase 12: a support session has no membership; it shows a read-only "Support" role and a banner.
+      let support: AdminContext['support'] = null;
+      if (auth.support) {
+        const [grant] = await tx
+          .select({ reason: supportGrants.reason })
+          .from(supportGrants)
+          .where(eq(supportGrants.id, auth.support.grantId));
+        roleRows.splice(0, roleRows.length, {
+          id: auth.support.grantId,
+          key: 'support',
+          name: 'Support (read-only)',
+        });
+        support = {
+          grantId: auth.support.grantId,
+          tenantId: tenant.id,
+          tenantName: tenant.displayName,
+          reason: grant?.reason ?? '',
+          expiresAt: auth.support.expiresAt.toISOString(),
+          readOnly: true,
+        };
+      }
       return {
         tenant: {
           id: tenant.id,
@@ -84,6 +106,7 @@ export class TenantAdminService {
         permissions,
         features: [...ctx.features],
         nav: computeNav(ctx.features, permissions),
+        support,
       };
     });
   }

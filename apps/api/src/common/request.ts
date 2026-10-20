@@ -8,6 +8,8 @@ export interface AuthState {
   sessionId: string;
   audience: Audience;
   sessionExpiresAt: Date;
+  /** Phase 12: set for a read-only platform support session bound to one approved grant. */
+  support?: { grantId: string; tenantId: string; expiresAt: Date };
 }
 
 export interface TenantState {

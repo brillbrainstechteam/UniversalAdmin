@@ -23,6 +23,7 @@ import { iso } from '../../common/mappers';
 import type { AuthState, RequestMeta, TenantState } from '../../common/request';
 import { DbService } from '../../db/db.service';
 import { assertTransition } from './catalog-rules';
+import { assertPlanCapacity } from '../launch/plans.service';
 
 type Raw = Record<string, string>;
 type ProductRow = typeof products.$inferSelect;
@@ -407,6 +408,13 @@ export class ImportService {
           },
         );
       }
+      // Phase 12: new products count against the plan (the whole commit is refused, nothing half-imported).
+      await assertPlanCapacity(
+        tx,
+        ctx.tenantId,
+        'products',
+        plan.groups.filter((g) => !g.existing && g.fields.status !== 'archived').length,
+      );
       const summary = { productsCreated: 0, productsUpdated: 0, variantsCreated: 0, variantsUpdated: 0 };
       for (const g of plan.groups) {
         let productId: string;

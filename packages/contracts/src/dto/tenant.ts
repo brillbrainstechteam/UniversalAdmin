@@ -31,6 +31,7 @@ const TenantCore = {
   timezone: z.string(),
   defaultLocale: z.string(),
   isDemo: z.boolean(),
+  planKey: z.string(),
   version: Version,
   createdAt: Timestamp,
   updatedAt: Timestamp,
@@ -91,6 +92,8 @@ export const CreateTenantRequest = z
     contactEmail: Email,
     ownerEmail: Email,
     isDemo: z.boolean().default(false),
+    /** Phase 12: plan with usage limits (defaults to the pilot plan). */
+    planKey: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/).default('pilot'),
   })
   .openapi('CreateTenantRequest');
 export type CreateTenantRequest = z.infer<typeof CreateTenantRequest>;

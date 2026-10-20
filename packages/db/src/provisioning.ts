@@ -24,6 +24,8 @@ export interface ProvisionTenantInput {
   defaultLocale: string;
   contactEmail: string | null;
   isDemo: boolean;
+  /** Phase 12: plan key (`plans.key`); defaults to `pilot`. */
+  planKey?: string;
 }
 
 export type TenantRow = typeof tenants.$inferSelect;

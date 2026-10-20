@@ -83,6 +83,8 @@ export const sessions = pgTable(
     revokedAt: ts('revoked_at'),
     ip: text('ip'),
     userAgent: text('user_agent'),
+    /** Phase 12: set for a read-only support session (`support_grants.id`; FK added in migration 0024). */
+    supportGrantId: uuid('support_grant_id'),
   },
   (t) => [
     uniqueIndex('sessions_token_hash_uq').on(t.tokenHash),
@@ -102,6 +104,8 @@ export const tenants = pgTable(
     legalName: text('legal_name').notNull(),
     /** Phase 11: owners/admins must have MFA enrolled before using the admin API. */
     requireMfaForAdmins: boolean('require_mfa_for_admins').notNull().default(false),
+    /** Phase 12: plan with usage limits (`plans.key`; FK added in migration 0024). */
+    planKey: text('plan_key').notNull().default('pilot'),
     status: text('status', { enum: ['provisioning', 'active', 'suspended'] })
       .notNull()
       .default('provisioning'),

@@ -167,6 +167,33 @@ Safe defaults were chosen where the specs are ambiguous; items marked **Proposed
 - **Audiences, not sends.** Segments are typed rules evaluated in SQL; consent is always the latest consent event per channel. Preparing a campaign snapshots only consented, reachable customers (counting the excluded); recipients stay `not_sent` until a notification connector exists (Phase 11).
 - **Reports** are fixed SQL over the platform's own records, with each metric's formula published in `REPORTS`, calendar days in the store time zone, store-currency amounts only (other currencies counted in notes), `generatedAt` on every response, CSV export with formula-injection protection. No CAC/ROAS: ad spend is not recorded. Attribution is the latest UTM-tagged arrival in the browser session, captured at checkout.
 
+## ADR-027 Launch: plans and usage limits, setup checklist, just-in-time support access — Accepted (Phase 12)
+- **Plans** are global rows (`plans`) with limits; `tenants.plan_key` defaults to `pilot` (no limits). Products, staff
+  seats (active members + pending invitations), locations and storefront domains are **hard** limits, checked in the
+  creating transaction under a per-tenant, per-kind advisory lock so concurrent creates cannot overshoot. Orders per
+  month is **soft** (shown as a warning, a sale is never refused for plan reasons). ERP sync is not limited: the
+  merchant's system of record is never refused; usage then shows *over*. Usage is computed live from the tables (no
+  counters). Plans carry no price — billing is blocked on a provider. Starter/Growth limits are proposals to confirm
+  commercially. Downgrades never delete anything.
+- **Setup checklist** is computed from real records (profile, location, channels, staff, products, approved rates for
+  metal-rate presets, payments, verified domain, import/connection, first order); nothing is ticked by hand. It
+  replaces the Phase 01 Home checklist in the UI (the old `HomeSummary.setupChecklist` field stays for contract
+  stability).
+- **Support access** (spec 03/06 "just-in-time, audited, approved, visible"): an operator with
+  `platform.support.request` asks with a reason and 15–120 minutes; a merchant **owner** (`support.manage`, not given
+  to admins) approves or denies; only the requesting operator can start it. Start returns a one-time, 60-second
+  handoff code (Redis, SHA-256 key, `GETDEL`) that the merchant admin redeems on its own origin, so the design works
+  when admin and console live on different domains. The session is a merchant-audience session bound to the grant
+  (`sessions.support_grant_id`): resolved only while the grant is approved and unexpired, GET-only
+  (`SUPPORT_READ_ONLY`), limited to that tenant, with the viewer role's read permissions (no customer personal data,
+  no audit log), and cannot change account security. Every request is audited (`support.request`); revoke ends the
+  sessions at once. If Redis is down, support start fails closed.
+- **Pilot connector checklist** reads a connection's real sync history in spec 05 order; "production support" is
+  always *blocked* until vendor acceptance.
+- **Hardening** is enforced by tests driven by `API_ROUTES`: every admin route → 401 without a session and 403 for a
+  non-member; every platform route → 401 with no or a merchant session; a tenant transaction sees zero rows of other
+  tenants in every table with a tenant policy.
+
 ## ADR-026 Operations: webhooks, automations, API keys, MFA, health and recovery — Accepted (Phase 11)
 - **Outbound webhooks** fan out from domain events in a worker consumer (deduped per consumer + event id), one delivery per subscribed endpoint. The worker leases due rows with SKIP LOCKED, POSTs outside any transaction with `X-UC-Signature: t=<unix>,v1=<HMAC-SHA256(secret, "t.body")>` and `X-UC-Event-Id`, 10 s timeout, no redirects, backoff 30 s × 2^(n−1) capped at 6 h, `dead` after 8 attempts; staff can replay. URLs must be https and resolve to public addresses (checked when saved and again at delivery); `WEBHOOKS_ALLOW_PRIVATE_TARGETS` exists for development/tests only and is refused in production.
 - **Secrets the platform must use itself** (webhook signing keys, TOTP seeds) are sealed with AES-256-GCM under `SECRETS_ENCRYPTION_KEY` (development default refused in production) and shown once. Connector credentials stay secret-store references.

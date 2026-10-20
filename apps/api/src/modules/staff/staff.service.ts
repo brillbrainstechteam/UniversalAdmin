@@ -38,6 +38,7 @@ import { AppError, Errors } from '../../common/errors';
 import { iso, likePattern } from '../../common/mappers';
 import type { AuthState, RequestMeta, TenantState } from '../../common/request';
 import { DbService } from '../../db/db.service';
+import { assertPlanCapacity } from '../launch/plans.service';
 
 type RoleRow = typeof roles.$inferSelect;
 type InvitationRow = typeof invitations.$inferSelect;
@@ -401,6 +402,7 @@ export class StaffService {
         );
       if (pending)
         throw new AppError(409, 'INVITATION_PENDING', 'An invitation for this email is already pending');
+      await assertPlanCapacity(tx, ctx.tenantId, 'staffSeats');
 
       const token = generateToken();
       const [row] = await tx

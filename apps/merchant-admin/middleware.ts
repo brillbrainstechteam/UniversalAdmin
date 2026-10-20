@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC = ['/login', '/accept-invite'];
+const PUBLIC = ['/login', '/accept-invite', '/support/start'];
 
 /** UX redirect only; the API enforces authentication and authorization on every request. */
 export function middleware(request: NextRequest) {

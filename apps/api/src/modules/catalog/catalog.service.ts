@@ -45,6 +45,7 @@ import { StorageService } from '../../common/storage.service';
 import { DbService } from '../../db/db.service';
 import { loadProductJewellery } from '../jewellery/jewellery.service';
 import { assertTransition, checkVariantOptions } from './catalog-rules';
+import { assertPlanCapacity } from '../launch/plans.service';
 
 type ProductRow = typeof products.$inferSelect;
 type VariantRow = typeof variants.$inferSelect;
@@ -339,6 +340,7 @@ export class CatalogService {
     return this.db.tenant(ctx.tenantId, async (tx) => {
       await this.assertCategory(tx, ctx, input.categoryId);
       await this.assertAttributes(tx, ctx, input.attributes);
+      await assertPlanCapacity(tx, ctx.tenantId, 'products');
       const [row] = await tx
         .insert(products)
         .values({

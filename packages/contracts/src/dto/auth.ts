@@ -1,3 +1,4 @@
+import { SupportSessionInfo } from './launch';
 import { Email, Timestamp, Uuid } from '../common';
 import { PLATFORM_ROLE_KEYS, type PlatformRole } from '../permissions';
 import { PRESET_KEYS } from '../features';
@@ -54,6 +55,8 @@ export const MeResponse = z
     memberships: z.array(MembershipSummary),
     platformRole: z.enum(PLATFORM_ROLE_KEYS as [PlatformRole, ...PlatformRole[]]).nullable(),
     platformPermissions: z.array(z.string()),
+    /** Phase 12: present only for a read-only platform support session. */
+    support: SupportSessionInfo.nullable().default(null),
   })
   .openapi('MeResponse');
 export type MeResponse = z.infer<typeof MeResponse>;

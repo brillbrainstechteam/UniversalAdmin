@@ -49,6 +49,7 @@ export const TENANT_PERMISSIONS = {
   'operations.read': { group: 'Operations', label: 'View operations health', phase: 11 },
   'webhooks.manage': { group: 'Operations', label: 'Manage outbound webhooks', phase: 11 },
   'apikeys.manage': { group: 'Operations', label: 'Create and revoke API keys', phase: 11 },
+  'support.manage': { group: 'Settings', label: 'Approve, deny and revoke platform support access', phase: 12 },
 } as const satisfies Record<string, { group: string; label: string; phase: number }>;
 
 export type TenantPermission = keyof typeof TENANT_PERMISSIONS;
@@ -73,8 +74,8 @@ export const SYSTEM_ROLES: Record<string, { name: string; description: string; p
     },
     admin: {
       name: 'Administrator',
-      description: 'Full access except granting or removing ownership',
-      permissions: ALL_TENANT_PERMISSIONS,
+      description: 'Full access except ownership changes and approving platform support access',
+      permissions: ALL_TENANT_PERMISSIONS.filter((p) => p !== 'support.manage'),
     },
     catalog_editor: {
       name: 'Catalog editor',
@@ -128,6 +129,8 @@ export const PLATFORM_PERMISSIONS = {
   'platform.tenants.manage': 'Provision, edit, suspend tenants',
   'platform.entitlements.manage': 'Change tenant feature entitlements',
   'platform.audit.read': 'View platform audit log',
+  'platform.plans.manage': 'Create plans and assign them to tenants',
+  'platform.support.request': 'Request just-in-time, merchant-approved support access',
 } as const;
 export type PlatformPermission = keyof typeof PLATFORM_PERMISSIONS;
 
@@ -138,7 +141,7 @@ export const PLATFORM_ROLES = {
   },
   platform_support: {
     name: 'Platform support',
-    permissions: ['platform.tenants.read', 'platform.audit.read'] as PlatformPermission[],
+    permissions: ['platform.tenants.read', 'platform.audit.read', 'platform.support.request'] as PlatformPermission[],
   },
 } as const;
 export type PlatformRole = keyof typeof PLATFORM_ROLES;

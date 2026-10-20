@@ -13,6 +13,7 @@ import { AppError, Errors } from '../../common/errors';
 import { likePattern, toLocation } from '../../common/mappers';
 import type { AuthState, RequestMeta, TenantState } from '../../common/request';
 import { DbService } from '../../db/db.service';
+import { assertPlanCapacity } from '../launch/plans.service';
 
 const SORTS: Record<string, { column: AnyColumn; key: 'code' | 'name' | 'createdAt' }> = {
   code: { column: locations.code, key: 'code' },
@@ -117,6 +118,7 @@ export class LocationService {
           { path: 'parentId', message: 'A bin must belong to a warehouse, branch or showroom' },
         ]);
       }
+      await assertPlanCapacity(tx, ctx.tenantId, 'locations');
       const [row] = await tx
         .insert(locations)
         .values({

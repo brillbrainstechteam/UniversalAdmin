@@ -18,6 +18,7 @@ import {
   memberships,
   platformAdmins,
   roles,
+  supportGrants,
   sha256,
   tenants,
   users,
@@ -176,6 +177,7 @@ export class AuthService {
 
   async me(auth: AuthState): Promise<MeResponse> {
     return this.db.system(async (tx) => {
+      if (auth.support) return this.supportMe(tx, auth, auth.support);
       const memberships = auth.audience === 'merchant' ? await this.membershipsOf(tx, auth.userId) : [];
       let platformRole: PlatformRole | null = null;
       if (auth.audience === 'platform') {
@@ -189,8 +191,50 @@ export class AuthService {
         memberships,
         platformRole,
         platformPermissions: platformRole ? [...PLATFORM_ROLES[platformRole].permissions] : [],
+        support: null,
       };
     });
+  }
+
+  /** Phase 12: a support session sees exactly one merchant, with a read-only "Support" role and a banner. */
+  private async supportMe(
+    tx: Tx,
+    auth: AuthState,
+    support: NonNullable<AuthState['support']>,
+  ): Promise<MeResponse> {
+    const [t] = await tx.select().from(tenants).where(eq(tenants.id, support.tenantId));
+    const [grant] = await tx
+      .select({ reason: supportGrants.reason })
+      .from(supportGrants)
+      .where(eq(supportGrants.id, support.grantId));
+    if (!t || !grant) throw Errors.unauthenticated();
+    return {
+      user: { id: auth.userId, email: auth.email, displayName: auth.displayName },
+      audience: auth.audience,
+      sessionExpiresAt: auth.sessionExpiresAt.toISOString(),
+      memberships: [
+        {
+          membershipId: support.grantId,
+          tenantId: t.id,
+          tenantSlug: t.slug,
+          tenantName: t.displayName,
+          tenantStatus: t.status,
+          preset: t.preset,
+          isDemo: t.isDemo,
+          roles: [{ id: support.grantId, key: 'support', name: 'Support (read-only)' }],
+        },
+      ],
+      platformRole: null,
+      platformPermissions: [],
+      support: {
+        grantId: support.grantId,
+        tenantId: t.id,
+        tenantName: t.displayName,
+        reason: grant.reason,
+        expiresAt: support.expiresAt.toISOString(),
+        readOnly: true,
+      },
+    };
   }
 
   private async membershipsOf(tx: Tx, userId: string): Promise<MembershipSummary[]> {

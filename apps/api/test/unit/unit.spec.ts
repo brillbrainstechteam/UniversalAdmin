@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { monthStartIn } from '../../src/modules/launch/plans.service';
 import { decodeCursor, encodeCursor, paginate } from '../../src/common/cursor';
 import { AppError } from '../../src/common/errors';
 import { likePattern } from '../../src/common/mappers';
@@ -66,6 +67,9 @@ describe('configuration', () => {
     expect(() => loadConfig({ ...keyed, WEBHOOKS_ALLOW_PRIVATE_TARGETS: 'true' })).toThrow(
       /WEBHOOKS_ALLOW_PRIVATE_TARGETS/,
     );
+    expect(() => loadConfig({ ...keyed, STOREFRONT_RATE_LIMIT_MULTIPLIER: '50' })).toThrow(
+      /STOREFRONT_RATE_LIMIT_MULTIPLIER/,
+    );
     expect(() => loadConfig(keyed)).toThrow(/PREVIEW_TOKEN_SECRET/);
     expect(
       loadConfig({
@@ -79,6 +83,19 @@ describe('configuration', () => {
     ).toBe(false);
     expect(() => loadConfig({ ...base, PAYMENTS_SANDBOX_SECRET: 'short' })).toThrow(
       /PAYMENTS_SANDBOX_SECRET/,
+    );
+  });
+});
+
+describe('plan usage month window (Phase 12)', () => {
+  it('starts at local midnight on the 1st in the merchant time zone', () => {
+    const now = new Date('2026-10-20T10:00:00Z');
+    expect(monthStartIn('Asia/Kolkata', now).toISOString()).toBe('2026-09-30T18:30:00.000Z');
+    expect(monthStartIn('UTC', now).toISOString()).toBe('2026-10-01T00:00:00.000Z');
+    expect(monthStartIn('America/New_York', now).toISOString()).toBe('2026-10-01T04:00:00.000Z');
+    // Just after local midnight on the 1st already belongs to the new month.
+    expect(monthStartIn('Asia/Kolkata', new Date('2026-10-31T18:31:00Z')).toISOString()).toBe(
+      '2026-10-31T18:30:00.000Z',
     );
   });
 });

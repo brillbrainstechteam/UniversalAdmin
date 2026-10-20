@@ -45,6 +45,14 @@ import { ReportsService } from './modules/reports/reports.service';
 import { ApiKeysService } from './modules/ops/api-keys.service';
 import { OpsController, PlatformOpsController } from './modules/ops/ops.controller';
 import { OpsService } from './modules/ops/ops.service';
+import {
+  LaunchAdminController,
+  PlatformLaunchController,
+  SupportAuthController,
+} from './modules/launch/launch.controller';
+import { ChecklistsService } from './modules/launch/checklists.service';
+import { PlansService } from './modules/launch/plans.service';
+import { SupportService } from './modules/launch/support.service';
 import { WebhooksService } from './modules/ops/webhooks.service';
 import { FulfillmentService } from './modules/fulfillment/fulfillment.service';
 import { RefundsService } from './modules/fulfillment/refunds.service';
@@ -131,6 +139,9 @@ export class AppModule {
         StorefrontContentController,
         OpsController,
         PlatformOpsController,
+        LaunchAdminController,
+        PlatformLaunchController,
+        SupportAuthController,
         BuyerController,
       ],
       providers: [
@@ -186,6 +197,9 @@ export class AppModule {
         ReportsService,
         ApiKeysService,
         OpsService,
+        PlansService,
+        ChecklistsService,
+        SupportService,
         WebhooksService,
       ],
     };

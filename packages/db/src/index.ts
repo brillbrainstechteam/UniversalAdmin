@@ -15,6 +15,7 @@ export * from './b2b-schema';
 export * from './b2c-schema';
 export * from './growth-schema';
 export * from './ops-schema';
+export * from './launch-schema';
 export * from './secrets';
 export * from './webhooks';
 export * from './client';

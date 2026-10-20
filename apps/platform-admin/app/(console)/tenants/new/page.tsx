@@ -6,6 +6,7 @@ import {
   PRESETS,
   PRESET_KEYS,
   type CreateTenantResponse,
+  type Plan,
   type PresetKey,
 } from '@uc/contracts';
 import {
@@ -25,7 +26,7 @@ import {
 } from '@uc/ui';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
-import { usePlatformMe } from '../../../../lib/platform';
+import { usePlatformMe, usePlatformQuery } from '../../../../lib/platform';
 
 const initial = {
   slug: '',
@@ -39,11 +40,13 @@ const initial = {
   contactEmail: '',
   ownerEmail: '',
   isDemo: false,
+  planKey: 'pilot',
 };
 
 export default function NewTenantPage() {
   const me = usePlatformMe();
   const queryClient = useQueryClient();
+  const plans = usePlatformQuery<{ items: Plan[] }>(['plans'], '/v1/platform/plans');
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
@@ -152,6 +155,16 @@ export default function NewTenantPage() {
             onChange={set('preset')}
             options={PRESET_KEYS.map((k) => ({ value: k, label: PRESETS[k].label }))}
             hint="Determines default features and channels; can be overridden per feature later."
+          />
+          <SelectField
+            label="Plan"
+            value={form.planKey}
+            onChange={set('planKey')}
+            error={errors.planKey}
+            options={(plans.data?.items ?? [])
+              .filter((p) => p.status === 'active')
+              .map((p) => ({ value: p.key, label: p.name }))}
+            hint="Usage limits for products, staff seats, locations and domains. No billing is connected."
           />
         </Card>
         <Card title="Region">

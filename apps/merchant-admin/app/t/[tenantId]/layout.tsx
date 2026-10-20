@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { LogoutButton } from '../../../lib/logout';
+import { SupportBanner } from '../../../lib/launch';
 import { InboxLink } from '../../../lib/ops';
 import { TenantProvider, useAuthRedirect } from '../../../lib/tenant';
 
@@ -77,8 +78,13 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
           { heading: 'Settings', items: ctx.nav.filter((n) => n.section === 'settings').map(item) },
         ]}
         banner={
-          ctx.tenant.isDemo ? (
-            <div className="uc-demo-banner">Demo merchant — all data here is illustrative demo data.</div>
+          ctx.support || ctx.tenant.isDemo ? (
+            <>
+              {ctx.support && <SupportBanner support={ctx.support} timeZone={ctx.tenant.timezone} />}
+              {ctx.tenant.isDemo && (
+                <div className="uc-demo-banner">Demo merchant — all data here is illustrative demo data.</div>
+              )}
+            </>
           ) : undefined
         }
         topbar={
@@ -88,12 +94,18 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
               <Badge tone="info">{ctx.membership.locationScope.length} location(s) only</Badge>
             )}
             <InboxLink />
-            <Link href="/account/security" className="uc-muted">
-              {ctx.user.email}
-            </Link>
-            <Link className="uc-btn" data-size="sm" href="/">
-              Switch merchant
-            </Link>
+            {ctx.support ? (
+              <span className="uc-muted">{ctx.user.email}</span>
+            ) : (
+              <>
+                <Link href="/account/security" className="uc-muted">
+                  {ctx.user.email}
+                </Link>
+                <Link className="uc-btn" data-size="sm" href="/">
+                  Switch merchant
+                </Link>
+              </>
+            )}
             <LogoutButton />
           </div>
         }

@@ -24,6 +24,7 @@ import {
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { SupportAccessCard, TenantPlanCard } from '../../../../lib/launch';
 import { usePlatformMe, usePlatformQuery } from '../../../../lib/platform';
 
 type Override = 'default' | 'on' | 'off';
@@ -151,6 +152,8 @@ export default function TenantDetailPage() {
           Created {formatDateTime(t.createdAt)} · version {t.version}
         </span>
       </Card>
+      <TenantPlanCard tenantId={t.id} timeZone={t.timezone} />
+      <SupportAccessCard tenantId={t.id} active={t.status === 'active'} />
       <Card title="Feature entitlements">
         <p className="uc-muted" style={{ margin: 0 }}>
           Effective = preset default unless overridden. Changes are audited and require a reason.

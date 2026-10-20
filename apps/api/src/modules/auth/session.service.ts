@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Audience } from '@uc/contracts';
-import { generateToken, sessions, sha256, users } from '@uc/db';
+import { generateToken, sessions, sha256, supportGrants, users } from '@uc/db';
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import type { CookieOptions, Request, Response } from 'express';
 import { APP_CONFIG, type AppConfig } from '../../config/config';
@@ -30,9 +30,12 @@ export class SessionService {
     userId: string,
     audience: Audience,
     meta: { ip: string | null; userAgent: string | null },
+    /** Phase 12: a support session ends with its grant, never later than the normal session lifetime. */
+    support?: { grantId: string; expiresAt: Date },
   ): Promise<{ token: string; sessionId: string; expiresAt: Date }> {
     const token = generateToken();
-    const expiresAt = new Date(Date.now() + this.ttl(audience));
+    const normal = Date.now() + this.ttl(audience);
+    const expiresAt = new Date(support ? Math.min(normal, support.expiresAt.getTime()) : normal);
     const [row] = await this.db.system((tx) =>
       tx
         .insert(sessions)
@@ -43,6 +46,7 @@ export class SessionService {
           expiresAt,
           ip: meta.ip,
           userAgent: meta.userAgent,
+          supportGrantId: support?.grantId ?? null,
         })
         .returning({ id: sessions.id }),
     );
@@ -69,9 +73,14 @@ export class SessionService {
           email: users.email,
           displayName: users.displayName,
           userStatus: users.status,
+          supportGrantId: sessions.supportGrantId,
+          grantTenantId: supportGrants.tenantId,
+          grantStatus: supportGrants.status,
+          grantExpiresAt: supportGrants.expiresAt,
         })
         .from(sessions)
         .innerJoin(users, eq(users.id, sessions.userId))
+        .leftJoin(supportGrants, eq(supportGrants.id, sessions.supportGrantId))
         .where(
           and(
             eq(sessions.tokenHash, sha256(token)),
@@ -82,6 +91,18 @@ export class SessionService {
         ),
     );
     if (!row || row.userStatus !== 'active') return null;
+    // A support session lives only while its grant is approved and unexpired (revoke/expiry end it at once).
+    let support: AuthState['support'];
+    if (row.supportGrantId) {
+      if (
+        row.grantStatus !== 'approved' ||
+        !row.grantExpiresAt ||
+        row.grantExpiresAt <= now ||
+        !row.grantTenantId
+      )
+        return null;
+      support = { grantId: row.supportGrantId, tenantId: row.grantTenantId, expiresAt: row.grantExpiresAt };
+    }
     if (now.getTime() - row.lastSeenAt.getTime() > this.config.session.idleTimeoutMs) {
       await this.revoke(row.sessionId);
       return null;
@@ -98,6 +119,7 @@ export class SessionService {
       sessionId: row.sessionId,
       audience,
       sessionExpiresAt: row.expiresAt,
+      ...(support ? { support } : {}),
     };
   }
 
@@ -108,6 +130,18 @@ export class SessionService {
         .set({ revokedAt: new Date() })
         .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt))),
     );
+  }
+
+  /** Ends every session opened under a support grant (on revoke). */
+  async revokeForGrant(grantId: string): Promise<number> {
+    const rows = await this.db.system((tx) =>
+      tx
+        .update(sessions)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(sessions.supportGrantId, grantId), isNull(sessions.revokedAt)))
+        .returning({ id: sessions.id }),
+    );
+    return rows.length;
   }
 
   async revokeAllForUser(userId: string): Promise<number> {

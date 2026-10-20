@@ -38,6 +38,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { serverErrors } from '../../../../../../lib/forms';
 import { useInventoryAction } from '../../../../../../lib/inventory';
+import { PilotChecklistCard } from '../../../../../../lib/launch';
 import { useTenant, useTenantQuery } from '../../../../../../lib/tenant';
 
 type Section = 'overview' | 'sync' | 'mapping' | 'records' | 'outbound' | 'discrepancies';
@@ -343,6 +344,7 @@ export default function ConnectionPage() {
           are listed as blocked on the Integrations page until they are certified.
         </Alert>
       )}
+      <PilotChecklistCard connectionId={connectionId} />
       <nav aria-label="Connection sections" className="uc-row" style={{ flexWrap: 'wrap', marginBottom: 12 }}>
         {SECTIONS.map((s) => (
           <button

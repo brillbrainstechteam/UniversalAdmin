@@ -30,7 +30,8 @@ export class AuthController {
   private async staff(req: AppRequest) {
     for (const audience of ['merchant', 'platform'] as const) {
       const auth = await this.sessions.resolve(this.sessions.tokenFrom(req, audience), audience);
-      if (auth) return auth;
+      // A support session cannot change account security; the operator's own platform session can.
+      if (auth && !auth.support) return auth;
     }
     throw Errors.unauthenticated();
   }

@@ -87,6 +87,9 @@ export function loadConfig(
   if (parsed.data.NODE_ENV === 'production' && parsed.data.WEBHOOKS_ALLOW_PRIVATE_TARGETS) {
     throw new Error('WEBHOOKS_ALLOW_PRIVATE_TARGETS must be false in production');
   }
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.STOREFRONT_RATE_LIMIT_MULTIPLIER !== 1) {
+    throw new Error('STOREFRONT_RATE_LIMIT_MULTIPLIER must be 1 in production (test runs only)');
+  }
   if (parsed.data.NODE_ENV === 'production' && parsed.data.PREVIEW_TOKEN_SECRET === DEV_PREVIEW_SECRET) {
     throw new Error('PREVIEW_TOKEN_SECRET must be set to a private value in production');
   }

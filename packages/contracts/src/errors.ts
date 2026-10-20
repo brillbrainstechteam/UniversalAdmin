@@ -64,6 +64,8 @@ export const ErrorCodes = [
   'MFA_INVALID',
   'MFA_ENROLMENT_REQUIRED',
   'UNSAFE_URL',
+  'PLAN_LIMIT_REACHED',
+  'SUPPORT_READ_ONLY',
   'INTERNAL',
 ] as const;
 export type ErrorCode = (typeof ErrorCodes)[number];

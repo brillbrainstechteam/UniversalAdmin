@@ -154,6 +154,18 @@ export class TenantGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<AppRequest>();
     if (!req.auth) throw Errors.unauthenticated();
+    if (req.auth.support) {
+      // Phase 12: platform support session — one approved merchant, read-only, every request audited.
+      const support = req.auth.support;
+      if (!SAFE_METHODS.has(req.method))
+        throw new AppError(403, 'SUPPORT_READ_ONLY', 'Support sessions are read-only');
+      const asked = req.header('x-tenant-id') ?? '';
+      if (asked.toLowerCase() !== support.tenantId)
+        throw new AppError(403, 'TENANT_ACCESS_DENIED', 'This support session is for another merchant');
+      req.tenant = await this.access.resolveSupport(support.grantId, support.tenantId);
+      await this.access.auditSupportRequest(req.auth.userId, support.grantId, support.tenantId, req);
+      return true;
+    }
     if (req.apiKey) {
       // API keys are read-only and bound to one merchant; permissions = creator's ∩ key scopes.
       if (!SAFE_METHODS.has(req.method)) throw Errors.forbidden('API keys are read-only');

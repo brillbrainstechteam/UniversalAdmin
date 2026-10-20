@@ -110,3 +110,12 @@ customers; nothing is sent). **Analytics** → reports with formulas and CSV. Op
 - **Operations**: merchant Operations page; platform console → Operations (dead events, replay).
 - **Backups**: `scripts/backup.sh uc_dev`, then `scripts/restore-drill.sh backups/<file>.dump uc_dev`.
 - **Performance fixtures**: `pnpm --filter @uc/api perf` (loads 5 000 products and 20 000 orders into `uc_test`).
+
+## Launch (Phase 12)
+- **Plans**: platform console → Plans (`platform@uc.local`); tenant page → Plan → *Change plan*. Lumière is seeded on
+  the capped Growth plan, the others on Pilot. Merchants see Settings → Plan & usage.
+- **Setup guide**: merchant admin → Setup guide (also the Home card); steps complete themselves from real data.
+- **Support access**: sign in to the console as `support@uc.local` → tenant → Support access → *Request access*;
+  approve as the merchant owner (Settings → Support access) in another browser profile; then *Open merchant admin*.
+- **Pilot readiness**: Integrations → a connection → Pilot readiness card.
+- Runbooks: `docs/runbooks/STAGING-DEPLOY.md`, `RELEASE.md`, `INCIDENT-RESPONSE.md`, `PILOT-READINESS.md`.

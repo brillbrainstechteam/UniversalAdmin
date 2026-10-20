@@ -15,6 +15,7 @@ export default defineConfig({
     './src/b2c-schema.ts',
     './src/growth-schema.ts',
     './src/ops-schema.ts',
+    './src/launch-schema.ts',
   ],
   out: './migrations',
   dbCredentials: { url: process.env.DATABASE_OWNER_URL ?? '' },

@@ -23,5 +23,6 @@ export * from './dto/orders';
 export * from './dto/customers';
 export * from './dto/growth';
 export * from './dto/ops';
+export * from './dto/launch';
 export * from './dto/b2b';
 export * from './openapi';

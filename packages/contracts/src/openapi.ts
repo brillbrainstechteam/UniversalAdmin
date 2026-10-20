@@ -17,6 +17,7 @@ import * as F from './dto/fulfillment';
 import * as CU from './dto/customers';
 import * as G from './dto/growth';
 import * as OP from './dto/ops';
+import * as L from './dto/launch';
 
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 type Scope = 'auth' | 'admin' | 'platform' | 'storefront' | 'system';
@@ -396,6 +397,23 @@ export const API_ROUTES: ApiRouteDoc[] = [
   { method: 'get', path: '/v1/platform/operations/health', scope: 'platform', permission: 'platform.tenants.read', summary: 'Platform-wide operations health', response: OP.OpsHealth },
   { method: 'get', path: '/v1/platform/operations/dead-events', scope: 'platform', permission: 'platform.tenants.read', summary: 'Events that failed to publish', response: OP.DeadEventList },
   { method: 'post', path: '/v1/platform/operations/dead-events/{id}/replay', scope: 'platform', permission: 'platform.tenants.manage', summary: 'Re-queue a dead event (consumers dedupe by id)', params: IdParam, response: z.object({ status: z.literal('pending') }), errors: [404] },
+  // ---- Phase 12: launch ----
+  { method: 'get', path: '/v1/admin/plan', scope: 'admin', summary: 'Plan and live usage of this merchant', response: L.PlanUsage },
+  { method: 'get', path: '/v1/admin/setup', scope: 'admin', summary: 'Setup checklist computed from real records', response: L.SetupChecklist },
+  { method: 'get', path: '/v1/admin/integrations/connections/{id}/pilot-checklist', scope: 'admin', permission: 'integrations.read', summary: 'Pilot readiness of a connection (production support never claimed)', params: IdParam, response: L.PilotChecklist, errors: [404] },
+  { method: 'get', path: '/v1/admin/support-grants', scope: 'admin', permission: 'support.manage', summary: 'Platform support access requests', response: L.SupportGrantList },
+  { method: 'post', path: '/v1/admin/support-grants/{id}/approve', scope: 'admin', permission: 'support.manage', summary: 'Approve read-only support access for its duration', params: IdParam, body: L.DecideSupportGrant, response: L.SupportGrant, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/support-grants/{id}/deny', scope: 'admin', permission: 'support.manage', summary: 'Deny a support access request', params: IdParam, body: L.DecideSupportGrant, response: L.SupportGrant, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/support-grants/{id}/revoke', scope: 'admin', permission: 'support.manage', summary: 'End support access now (signs the operator out)', params: IdParam, response: L.SupportGrant, errors: [404, 409] },
+  { method: 'get', path: '/v1/platform/plans', scope: 'platform', permission: 'platform.tenants.read', summary: 'Plans with limits and tenant counts', response: L.PlanList },
+  { method: 'put', path: '/v1/platform/plans/{key}', scope: 'platform', permission: 'platform.plans.manage', summary: 'Create (no version) or update (version) a plan', params: z.object({ key: L.PlanKey }), body: L.SavePlanRequest, response: L.Plan, errors: [404, 409, 422] },
+  { method: 'get', path: '/v1/platform/tenants/{id}/usage', scope: 'platform', permission: 'platform.tenants.read', summary: 'Plan and live usage of a tenant', params: IdParam, response: L.PlanUsage, errors: [404] },
+  { method: 'put', path: '/v1/platform/tenants/{id}/plan', scope: 'platform', permission: 'platform.plans.manage', summary: 'Assign a plan (audited, reason required)', params: IdParam, body: L.AssignPlanRequest, response: L.PlanUsage, errors: [404, 422] },
+  { method: 'get', path: '/v1/platform/support-grants', scope: 'platform', permission: 'platform.support.request', summary: 'Support access requests', query: z.object({ tenantId: Uuid.optional() }), response: L.SupportGrantList },
+  { method: 'post', path: '/v1/platform/tenants/{id}/support-grants', scope: 'platform', permission: 'platform.support.request', summary: 'Ask the merchant for time-limited read-only access', params: IdParam, body: L.RequestSupportAccess, response: L.SupportGrant, status: 201, errors: [404, 409] },
+  { method: 'post', path: '/v1/platform/support-grants/{id}/start', scope: 'platform', permission: 'platform.support.request', summary: 'One-time 60-second handoff link into the merchant admin (requester only, approved only)', params: IdParam, response: L.SupportSessionStarted, errors: [403, 404, 409] },
+  { method: 'post', path: '/v1/platform/support-grants/{id}/revoke', scope: 'platform', permission: 'platform.support.request', summary: 'End your own support access', params: IdParam, response: L.SupportGrant, errors: [403, 404, 409] },
+  { method: 'post', path: '/v1/auth/support/redeem', scope: 'auth', summary: 'Redeem a support handoff code into a read-only merchant session', body: z.object({ code: z.string() }), response: z.object({ tenantId: Uuid, expiresAt: z.string() }), errors: [401, 429] },
 ];
 const SECURITY: Record<Scope, RouteConfig['security']> = {
   auth: [],
@@ -463,7 +481,7 @@ export function buildOpenApiDocument(
     openapi: '3.1.0',
     info: {
       title: 'Universal Commerce OS API',
-      version: '1.0.0-phase11',
+      version: '1.0.0-phase12',
       description:
         'Multi-tenant commerce platform API. Errors use {code,message,details,correlationId}. Decimals are strings; money is {amountMinor,currency}.',
     },
