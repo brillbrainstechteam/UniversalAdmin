@@ -116,6 +116,47 @@ export interface PricingContext {
   /** List price per piece in major units (price book entry). */
   listPrice: string | null;
   tax: PricingTax | null;
+  /**
+   * Phase 10: order promotions already allocated to this line (integer minor units). They are spread over the
+   * line's components after the rule discount and BEFORE tax, so tax is computed on the discounted amounts.
+   */
+  promotions?: { id: string; label: string; discountMinor: string }[];
+}
+
+/** A promotion to plan across an order (Phase 10). `value` is a percentage or major-unit amount. */
+export interface PromotionInput {
+  id: string;
+  label: string;
+  mode: 'percent' | 'fixed';
+  value: string;
+}
+
+/**
+ * Splits order-level promotions over lines, exactly. Each promotion's amount is computed on the order base (sum of
+ * line amounts after rule discounts): percent → half-up of base × value / 100; fixed → min(value, base). Promotions
+ * together never exceed the base. Each amount is allocated across lines by largest remainder, weighted by line base.
+ * Returns, per line, the promotions with their minor share.
+ */
+export function planPromotions(
+  lineBasesMinor: readonly string[],
+  promotions: readonly PromotionInput[],
+  minorUnits: number,
+): { perLine: { id: string; label: string; discountMinor: string }[][]; totals: { id: string; discountMinor: string }[] } {
+  const base = new D(sumMinor(lineBasesMinor));
+  let left = base;
+  const perLine: { id: string; label: string; discountMinor: string }[][] = lineBasesMinor.map(() => []);
+  const totals: { id: string; discountMinor: string }[] = [];
+  for (const p of promotions) {
+    const wanted = p.mode === 'percent' ? new D(toMinor(base.times(p.value).dividedBy(100), 0)) : new D(toMinor(p.value, minorUnits));
+    const amount = D.min(wanted, left);
+    left = left.minus(amount);
+    totals.push({ id: p.id, discountMinor: amount.toFixed(0) });
+    if (amount.isZero()) continue;
+    allocate(amount.toFixed(0), lineBasesMinor).forEach((share, i) => {
+      if (share !== '0') perLine[i]!.push({ id: p.id, label: p.label, discountMinor: share });
+    });
+  }
+  return { perLine, totals };
 }
 
 // ---------------------------------------------------------------- conditions
@@ -386,6 +427,18 @@ export function calculatePrice(rule: RuleDefinition, item: PricingItem, ctx: Pri
       warnings.push('The fixed discount was larger than the eligible amount and was capped');
   }
 
+  // Order promotions (already split per line): spread over what is left of each component, before tax.
+  const promotions: NonNullable<PriceBreakdown['promotions']> = [];
+  for (const promo of ctx.promotions ?? []) {
+    const remaining = components.map((c) => new D(c.amountMinor).minus(c.discountMinor).toFixed(0));
+    const applied = D.min(new D(promo.discountMinor), new D(sumMinor(remaining))).toFixed(0);
+    allocate(applied, remaining).forEach((share, i) => {
+      components[i]!.discountMinor = new D(components[i]!.discountMinor).plus(share).toFixed(0);
+    });
+    discountTotal = new D(discountTotal).plus(applied).toFixed(0);
+    promotions.push({ id: promo.id, label: promo.label, discountMinor: applied });
+  }
+
   // Tax hook.
   let tax: PriceBreakdown['tax'] = null;
   let taxMinor = '0';
@@ -413,6 +466,7 @@ export function calculatePrice(rule: RuleDefinition, item: PricingItem, ctx: Pri
     components,
     subtotalMinor,
     discountMinor: discountTotal,
+    ...(promotions.length ? { promotions } : {}),
     tax,
     taxMinor,
     totalMinor,

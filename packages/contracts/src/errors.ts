@@ -58,6 +58,8 @@ export const ErrorCodes = [
   'REFUND_EXCEEDS_CAPTURED',
   'RETURN_WINDOW_CLOSED',
   'EMAIL_TAKEN',
+  'DISCOUNT_NOT_APPLICABLE',
+  'DOMAIN_NOT_VERIFIED',
   'INTERNAL',
 ] as const;
 export type ErrorCode = (typeof ErrorCodes)[number];

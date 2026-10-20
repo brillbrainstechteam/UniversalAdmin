@@ -217,6 +217,10 @@ export const channelDomains = pgTable(
       .default('pending'),
     isPrimary: boolean('is_primary').notNull().default(false),
     verifiedAt: ts('verified_at'),
+    /** Phase 10: value expected in the DNS TXT record `_uc-verify.<hostname>`. */
+    verificationToken: text('verification_token'),
+    lastCheckAt: ts('last_check_at'),
+    lastCheckError: text('last_check_error'),
     createdAt: createdAt(),
   },
   (t) => [

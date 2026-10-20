@@ -54,12 +54,22 @@ describe('configuration', () => {
     expect(() => loadConfig({ ...base, NODE_ENV: 'production', COOKIE_SECURE: 'true' })).toThrow(
       /PAYMENTS_SANDBOX_ENABLED/,
     );
+    // Content preview links must not be signed with the published development secret (ADR-025).
+    expect(() =>
+      loadConfig({
+        ...base,
+        NODE_ENV: 'production',
+        COOKIE_SECURE: 'true',
+        PAYMENTS_SANDBOX_ENABLED: 'false',
+      }),
+    ).toThrow(/PREVIEW_TOKEN_SECRET/);
     expect(
       loadConfig({
         ...base,
         NODE_ENV: 'production',
         COOKIE_SECURE: 'true',
         PAYMENTS_SANDBOX_ENABLED: 'false',
+        PREVIEW_TOKEN_SECRET: 'a-private-preview-secret-for-production-0001',
       }).PAYMENTS_SANDBOX_ENABLED,
     ).toBe(false);
     expect(() => loadConfig({ ...base, PAYMENTS_SANDBOX_SECRET: 'short' })).toThrow(

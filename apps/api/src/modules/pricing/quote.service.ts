@@ -4,6 +4,8 @@ import {
   RuleConditions,
   RuleDefinition,
   calculatePrice,
+  currencyMinorUnits,
+  planPromotions,
   ruleMatches,
   sumMinor,
   type CalculateRequest,
@@ -17,6 +19,7 @@ import {
   type PricingItem,
   type PricingItemResults,
   type PricingTax,
+  type PromotionInput,
   type QuoteLine,
   type QuoteLineInput,
   type RevalidateQuoteResponse,
@@ -365,6 +368,7 @@ export class QuoteService {
     scope: Scope,
     resolved: ResolvedItem,
     candidates: Candidate[] | Candidate,
+    promotions?: { id: string; label: string; discountMinor: string }[],
   ): Promise<QuoteLine> {
     const chosen = Array.isArray(candidates)
       ? candidates.find((c) => ruleMatches(c.conditions, resolved.item))
@@ -455,6 +459,7 @@ export class QuoteService {
         rate: engineRate,
         listPrice,
         tax,
+        ...(promotions?.length ? { promotions } : {}),
       });
     } catch (e) {
       pricingFailure(e);
@@ -620,12 +625,25 @@ export class QuoteService {
   // ---------------------------------------------------------------- quotes
 
   /** Prices every line (reads only). */
-  async priceLines(tx: Tx, scope: Scope, lines: QuoteLineInput[]) {
+  /**
+   * Prices lines. With `choosePromotions` (Phase 10 storefront orders), the order promotions it returns for the
+   * line bases (after rule discounts) are split across lines exactly and each line is priced again with its share,
+   * before tax.
+   */
+  async priceLines(
+    tx: Tx,
+    scope: Scope,
+    lines: QuoteLineInput[],
+    choosePromotions?: (lineBasesMinor: string[], currency: string) => Promise<PromotionInput[]>,
+  ) {
     const candidates = await this.candidates(tx, scope);
-    const priced: QuoteLine[] = [];
+    let priced: QuoteLine[] = [];
+    const resolvedItems: ResolvedItem[] = [];
     for (const [i, l] of lines.entries()) {
       try {
-        priced.push(await this.priceLine(tx, scope, await this.resolveItem(tx, scope, l), candidates));
+        const resolved = await this.resolveItem(tx, scope, l);
+        resolvedItems.push(resolved);
+        priced.push(await this.priceLine(tx, scope, resolved, candidates));
       } catch (e) {
         if (e instanceof AppError && lines.length > 1)
           throw new AppError(e.status, e.code, `Line ${i + 1}: ${e.message}`, {
@@ -640,6 +658,21 @@ export class QuoteService {
       throw invalid(
         `Lines are priced in different currencies (${[...currencies].join(', ')}); quote them separately`,
       );
+    let promotionTotals: { id: string; discountMinor: string }[] = [];
+    if (choosePromotions && priced.length) {
+      const currency = priced[0]!.breakdown.currency;
+      const bases = priced.map((p) =>
+        (BigInt(p.breakdown.subtotalMinor) - BigInt(p.breakdown.discountMinor)).toString(),
+      );
+      const promos = await choosePromotions(bases, currency);
+      if (promos.length) {
+        const plan = planPromotions(bases, promos, currencyMinorUnits(currency));
+        promotionTotals = plan.totals;
+        priced = [];
+        for (const [i, resolved] of resolvedItems.entries())
+          priced.push(await this.priceLine(tx, scope, resolved, candidates, plan.perLine[i]));
+      }
+    }
     const pieces = new Set<string>();
     for (const p of priced)
       if (p.serialItemId) {
@@ -655,6 +688,7 @@ export class QuoteService {
       discountMinor: total('discountMinor'),
       taxMinor: total('taxMinor'),
       totalMinor: total('totalMinor'),
+      promotionTotals,
     };
   }
 

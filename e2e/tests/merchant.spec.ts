@@ -30,7 +30,8 @@ test('owner signs in, sees preset-gated navigation and edits business settings',
     await expect(nav(page).getByRole('link', { name: item, exact: true })).toBeVisible();
   }
   // Modules from later phases are not shown as dead links.
-  await expect(nav(page).getByRole('link', { name: 'Analytics' })).toHaveCount(0); // Phase 10
+  await expect(nav(page).getByRole('link', { name: 'Automations' })).toHaveCount(0); // Phase 11
+  await expect(nav(page).getByRole('link', { name: 'Analytics' })).toBeVisible(); // Phase 10
   await expect(nav(page).getByRole('link', { name: 'Customers' })).toHaveCount(0); // B2B preset has no consumer accounts
   await expect(nav(page).getByRole('link', { name: 'Companies' })).toBeVisible(); // Phase 08
   await expect(nav(page).getByRole('link', { name: 'Orders' })).toBeVisible(); // Phase 07

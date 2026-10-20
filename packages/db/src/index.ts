@@ -13,6 +13,7 @@ export * from './fulfillment';
 export * from './messages';
 export * from './b2b-schema';
 export * from './b2c-schema';
+export * from './growth-schema';
 export * from './client';
 export * from './audit';
 export * from './outbox';

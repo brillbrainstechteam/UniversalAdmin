@@ -2,6 +2,7 @@ import { requireEnv } from '@uc/db';
 import { z } from '@uc/contracts';
 
 const bool = z.enum(['true', 'false']).transform((v) => v === 'true');
+const DEV_PREVIEW_SECRET = 'dev-only-storefront-preview-signing-secret-0123';
 
 const ConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -35,6 +36,11 @@ const ConfigSchema = z.object({
     .string()
     .min(32, 'PAYMENTS_SANDBOX_SECRET must be at least 32 characters')
     .default('dev-only-sandbox-payment-signing-secret-0123456789'),
+  // Phase 10 storefront content preview links (HMAC-signed, short-lived).
+  PREVIEW_TOKEN_SECRET: z
+    .string()
+    .min(32, 'PREVIEW_TOKEN_SECRET must be at least 32 characters')
+    .default(DEV_PREVIEW_SECRET),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema> & {
@@ -64,6 +70,9 @@ export function loadConfig(
     throw new Error(
       'PAYMENTS_SANDBOX_ENABLED must be false in production (the sandbox gateway takes no real payments)',
     );
+  }
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.PREVIEW_TOKEN_SECRET === DEV_PREVIEW_SECRET) {
+    throw new Error('PREVIEW_TOKEN_SECRET must be set to a private value in production');
   }
   return {
     ...parsed.data,

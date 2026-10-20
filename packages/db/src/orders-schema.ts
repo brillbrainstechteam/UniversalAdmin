@@ -69,6 +69,8 @@ export const carts = pgTable(
     tenantId: tenantId(),
     channelId: uuid('channel_id').notNull(),
     tokenHash: text('token_hash').notNull(),
+    /** Phase 10: discount code the shopper entered (re-validated on every quote and at checkout). */
+    discountCode: text('discount_code'),
     status: text('status', { enum: ['open', 'converted', 'abandoned'] })
       .notNull()
       .default('open'),
@@ -115,6 +117,8 @@ export const orders = pgTable(
       .default('unfulfilled'),
     /** Phase 09: the signed-in storefront customer who placed the order (guest orders stay unlinked). */
     customerId: uuid('customer_id'),
+    /** Phase 10: marketing attribution captured at checkout (UTM source/medium/campaign, landing path). */
+    attribution: jsonb('attribution'),
     paymentTerms: text('payment_terms', { enum: ['prepaid', 'on_account'] }).notNull(),
     currency: text('currency').notNull(),
     subtotalMinor: minor('subtotal_minor').notNull(),

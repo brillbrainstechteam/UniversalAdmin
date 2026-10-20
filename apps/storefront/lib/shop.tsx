@@ -8,13 +8,71 @@ import {
   type CustomerMe,
   type QuoteLineInput,
   type StorefrontConfig,
+  type StorefrontSite,
+  type Attribution,
 } from '@uc/contracts';
 import { ApiError, apiRequest, type RequestOptions } from '@uc/ui';
 import { useCallback } from 'react';
 
+function session(key: string): string | null {
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Remembers, for this browser tab, a staff preview token (`?preview=`) and the marketing attribution: the UTM
+ * parameters of the latest tagged link the shopper arrived from, with its landing page.
+ */
+export function captureVisit() {
+  try {
+    const url = new URL(window.location.href);
+    const preview = url.searchParams.get('preview');
+    if (preview) window.sessionStorage.setItem('uc_preview', preview);
+    const p = url.searchParams;
+    const tagged = p.has('utm_source') || p.has('utm_medium') || p.has('utm_campaign');
+    // Last tagged visit wins; an untagged first page only records the landing path.
+    if (tagged || !window.sessionStorage.getItem('uc_attribution')) {
+      window.sessionStorage.setItem(
+        'uc_attribution',
+        JSON.stringify({
+          source: p.get('utm_source'),
+          medium: p.get('utm_medium'),
+          campaign: p.get('utm_campaign'),
+          landingPath: url.pathname,
+        }),
+      );
+    }
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function attribution(): Attribution | null {
+  const raw = session('uc_attribution');
+  if (!raw) return null;
+  try {
+    const a = JSON.parse(raw) as Attribution;
+    return a.source || a.medium || a.campaign ? a : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Storefront API call through the same-origin proxy (the proxy adds the store domain and gateway key). */
 export function shopApi<T>(path: string, options: Omit<RequestOptions, 'tenantId'> = {}): Promise<T> {
-  return apiRequest<T>(`/v1/storefront${path}`, options);
+  const preview = typeof window !== 'undefined' ? session('uc_preview') : null;
+  return apiRequest<T>(`/v1/storefront${path}`, {
+    ...options,
+    headers: { ...(preview ? { 'X-Preview-Token': preview } : {}), ...(options.headers ?? {}) },
+  });
+}
+
+/** Published theme, menus, banner and pages (drafts while previewing). */
+export function useSite() {
+  return useQuery({ queryKey: ['site'], queryFn: () => shopApi<StorefrontSite>('/site'), staleTime: 60_000 });
 }
 
 /** Only same-site relative paths are followed after sign-in. */
@@ -136,9 +194,24 @@ export function useCart() {
     },
     [qc],
   );
+  /** Enters or clears a discount code; the server re-prices and explains a code that does not apply. */
+  const setCode = useCallback(
+    async (code: string | null) => {
+      const ref = readCart();
+      if (!ref) return null;
+      const c = await shopApi<Cart>(`/carts/${ref.cartId}/discount`, {
+        method: 'PUT',
+        body: { code },
+        headers: { 'X-Cart-Token': ref.cartToken },
+      });
+      qc.setQueryData(['cart'], { ...c, token: ref.cartToken });
+      return c;
+    },
+    [qc],
+  );
   const clear = useCallback(() => {
     writeCart(null);
     qc.setQueryData(['cart'], null);
   }, [qc]);
-  return { ...cart, setLines, clear };
+  return { ...cart, setLines, setCode, clear };
 }

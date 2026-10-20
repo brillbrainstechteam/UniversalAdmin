@@ -512,7 +512,9 @@ describe('immutable snapshot (O-06)', () => {
       .send({ locationId: lumMain, lines: [{ variantId: v, serialItemIds: [piece.id] }] })
       .expect(201);
     const cart = await cartWith(LUM, [{ variantId: v, serialItemId: piece.id }]);
-    const placed = (await checkout(LUM, cart)).body;
+    const checkedOut = await checkout(LUM, cart);
+    expect(checkedOut.status, JSON.stringify(checkedOut.body)).toBe(201);
+    const placed = checkedOut.body;
     await sf(LUM)
       .post(`/v1/storefront/orders/${placed.id}/sandbox-payment`)
       .send({ cartToken: cart.token, outcome: 'succeeded' })

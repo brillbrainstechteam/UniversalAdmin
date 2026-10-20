@@ -30,6 +30,18 @@ import { CustomerAuthService } from './modules/customers/customer-auth.service';
 import { CustomersController, StorefrontAccountController } from './modules/customers/customers.controller';
 import { CustomersService } from './modules/customers/customers.service';
 import { FulfillmentController } from './modules/fulfillment/fulfillment.controller';
+import { DiscountsService } from './modules/discounts/discounts.service';
+import { PromotionsService } from './modules/discounts/promotions.service';
+import { MarketingService } from './modules/marketing/marketing.service';
+import {
+  DiscountsController,
+  MarketingController,
+  OnlineStoreController,
+  ReportsController,
+  StorefrontContentController,
+} from './modules/online-store/growth.controller';
+import { OnlineStoreService } from './modules/online-store/online-store.service';
+import { ReportsService } from './modules/reports/reports.service';
 import { FulfillmentService } from './modules/fulfillment/fulfillment.service';
 import { RefundsService } from './modules/fulfillment/refunds.service';
 import { ReturnsService } from './modules/fulfillment/returns.service';
@@ -107,6 +119,11 @@ export class AppModule {
         CustomersController,
         StorefrontAccountController,
         FulfillmentController,
+        OnlineStoreController,
+        DiscountsController,
+        MarketingController,
+        ReportsController,
+        StorefrontContentController,
         BuyerController,
       ],
       providers: [
@@ -154,6 +171,11 @@ export class AppModule {
         FulfillmentService,
         ReturnsService,
         RefundsService,
+        PromotionsService,
+        DiscountsService,
+        MarketingService,
+        OnlineStoreService,
+        ReportsService,
       ],
     };
   }

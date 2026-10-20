@@ -5,6 +5,7 @@ import {
   RuleDefinition,
   allocate,
   calculatePrice,
+  planPromotions,
   conditionsOverlap,
   currencyMinorUnits,
   formatMinor,
@@ -228,5 +229,38 @@ describe('rule conditions and conflicts (PR-06/07)', () => {
     expect(() => rule({ base: { kind: 'metal', weightBasis: 'net' }, making: { mode: 'tiered_per_gram', tiers: [{ upToG: null, amount: '1' }, { upToG: '5', amount: '1' }] } })).toThrow();
     expect(() => rule({ base: { kind: 'metal', weightBasis: 'net' }, discount: { mode: 'percent', value: '120', appliesTo: ['making'] } })).toThrow();
     expect(() => rule({ base: { kind: 'metal', weightBasis: 'net' }, making: { mode: 'per_gram', amount: '1.5e3' } })).toThrow();
+  });
+});
+
+describe('order promotions, before tax (G-05)', () => {
+  it('plans promotions on the order base exactly and never beyond it', () => {
+    // Base 150.01: 10% = 15.001 → 15.00, split 10000:5001 → 9.999… / 5.000… → 10.00 + 5.00 by largest remainder.
+    const plan = planPromotions(['10000', '5001'], [
+      { id: 'p1', label: '10% off', mode: 'percent', value: '10' },
+      { id: 'p2', label: '£200 off', mode: 'fixed', value: '200' },
+    ], 2);
+    expect(plan.totals).toEqual([
+      { id: 'p1', discountMinor: '1500' },
+      { id: 'p2', discountMinor: '13501' }, // capped at what is left (150.01 − 15.00)
+    ]);
+    expect(plan.perLine[0]![0]).toEqual({ id: 'p1', label: '10% off', discountMinor: '1000' });
+    expect(plan.perLine[1]![0]).toEqual({ id: 'p1', label: '10% off', discountMinor: '500' });
+    const all = plan.perLine.flat().reduce((a, x) => a + BigInt(x.discountMinor), 0n);
+    expect(all).toBe(15001n);
+  });
+
+  it('spreads a line promotion over components and taxes the discounted amounts', () => {
+    const tax = { id: 't1', label: 'VAT', ratePercent: '20', appliesTo: ['list_price' as const], status: 'validated' as const };
+    const b = calculatePrice(
+      rule({ base: { kind: 'list_price' }, charges: [{ code: 'packing', label: 'Gift box', mode: 'per_piece', amount: '5.00' }] }),
+      item({ productType: 'standard', metal: null, purityId: null }),
+      ctx({ currency: 'GBP', rate: null, listPrice: '100.00', tax, promotions: [{ id: 'p1', label: 'Code SAVE', discountMinor: '1051' }] }),
+    );
+    // Components 10000 + 500; promotion 10.51 split 10000:500 → 10.01 + 0.50; VAT 20% of (100.00 − 10.01) = 17.998 → 18.00.
+    expect(b.components.map((c) => c.discountMinor)).toEqual(['1001', '50']);
+    expect(b.discountMinor).toBe('1051');
+    expect(b.taxMinor).toBe('1800');
+    expect(b.totalMinor).toBe('11249'); // 105.00 − 10.51 + 18.00
+    expect(b.promotions).toEqual([{ id: 'p1', label: 'Code SAVE', discountMinor: '1051' }]);
   });
 });

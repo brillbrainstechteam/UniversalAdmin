@@ -21,6 +21,9 @@ if it were real. Update this file and that constant together when an item is unb
 | B2C | E-mail/SMS delivery, e-mail verification, password reset | A notification provider account (e-mail/SMS/WhatsApp) + approved templates | 09/11 | Messages recorded as "not sent"; accounts usable unverified |
 | B2C | Courier labels and live tracking | Courier/aggregator account + API keys | 09/11 | Carrier and tracking number typed by staff, labelled "not tracked" |
 | B2C | Invoices / credit notes | Accountant validation of GST invoice format | 09 | Order record and refund history only |
+| Marketing | Campaign sending (e-mail/SMS/WhatsApp) | Notification provider account, approved templates, sender domain | 10/11 | Consented audiences prepared; recipients "not sent" |
+| Marketing | Acquisition cost (CAC/ROAS) | Ad-spend import from ad platforms | 10+ | Attribution by UTM source only; no cost metrics shown |
+| Online store | TLS for custom domains | Hosting/CDN decision | 12 | DNS-verified domains resolve over the deployment's existing TLS |
 | B2B | ERP outstanding balances / credit | A live ERP adapter (see ERP rows) exposing receivables per customer | 08 | Commerce-side credit ledger; ERP-authority companies show "not synced" |
 
 Vendor outreach drafts: [VENDOR-OUTREACH.md](VENDOR-OUTREACH.md). Research: [ERP-VENDOR-RESEARCH.md](ERP-VENDOR-RESEARCH.md).

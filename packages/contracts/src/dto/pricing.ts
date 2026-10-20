@@ -490,6 +490,8 @@ export const PriceBreakdown = z
     components: z.array(PriceComponent),
     subtotalMinor: MinorAmount,
     discountMinor: MinorAmount,
+    /** Phase 10: order promotions included in discountMinor (applied before tax). */
+    promotions: z.array(z.object({ id: Uuid, label: z.string(), discountMinor: MinorAmount })).optional(),
     tax: z
       .object({ ruleId: Uuid, label: z.string(), ratePercent: z.string(), status: z.string(), baseMinor: MinorAmount, exact: z.string() })
       .nullable(),

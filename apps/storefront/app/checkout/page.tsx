@@ -17,7 +17,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { rememberOrder, shopApi, useCart, useCustomer, useMoney } from '../../lib/shop';
+import { attribution, rememberOrder, shopApi, useCart, useCustomer, useMoney } from '../../lib/shop';
 
 export default function CheckoutPage() {
   const cart = useCart();
@@ -89,6 +89,7 @@ export default function CheckoutPage() {
             postalCode: form.postalCode.trim() || null,
             countryCode: form.countryCode.trim().toUpperCase(),
           },
+          attribution: attribution(),
         },
       });
       rememberOrder(order.id, cart.data!.token);
@@ -189,6 +190,11 @@ export default function CheckoutPage() {
             </li>
           ))}
         </ul>
+        {cart.data.promotions.applied.map((p) => (
+          <span key={p.discountId}>
+            {p.label}: −{money(p.discountMinor)} (already included)
+          </span>
+        ))}
         <span className="uc-muted">
           Payment is taken on the next page through a SANDBOX gateway — no real money moves in this demo.
         </span>

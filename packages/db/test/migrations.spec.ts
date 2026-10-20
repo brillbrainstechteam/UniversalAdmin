@@ -10,6 +10,7 @@ import { INVENTORY_RLS_TABLES } from '../src/inventory-schema';
 import { JEWELLERY_RLS_TABLES } from '../src/jewellery-schema';
 import { B2B_RLS_TABLES } from '../src/b2b-schema';
 import { B2C_RLS_TABLES } from '../src/b2c-schema';
+import { GROWTH_RLS_TABLES } from '../src/growth-schema';
 import { ORDER_RLS_TABLES } from '../src/orders-schema';
 import { PRICING_RLS_TABLES } from '../src/pricing-schema';
 import { RLS_TABLES as CORE_RLS_TABLES } from '../src/schema';
@@ -24,6 +25,7 @@ const RLS_TABLES = [
   ...ORDER_RLS_TABLES,
   ...B2B_RLS_TABLES,
   ...B2C_RLS_TABLES,
+  ...GROWTH_RLS_TABLES,
 ];
 const NON_TENANT_TABLES = [
   'idempotency_keys',
@@ -90,7 +92,7 @@ describe('migrations (F-10)', () => {
       cpSync(MIGRATIONS_FOLDER, join(dir, 'migrations'), { recursive: true });
       writeFileSync(
         join(dir, 'drizzle.config.ts'),
-        `export default { dialect: 'postgresql', schema: ['./src/schema.ts', './src/catalog-schema.ts', './src/jewellery-schema.ts', './src/inventory-schema.ts', './src/integrations-schema.ts', './src/pricing-schema.ts', './src/orders-schema.ts', './src/b2b-schema.ts', './src/b2c-schema.ts'], out: './.drift-probe/migrations' };`,
+        `export default { dialect: 'postgresql', schema: ['./src/schema.ts', './src/catalog-schema.ts', './src/jewellery-schema.ts', './src/inventory-schema.ts', './src/integrations-schema.ts', './src/pricing-schema.ts', './src/orders-schema.ts', './src/b2b-schema.ts', './src/b2c-schema.ts', './src/growth-schema.ts'], out: './.drift-probe/migrations' };`,
       );
       const output = execFileSync(
         process.execPath,

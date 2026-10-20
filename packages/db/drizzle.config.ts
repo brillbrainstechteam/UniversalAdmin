@@ -13,6 +13,7 @@ export default defineConfig({
     './src/orders-schema.ts',
     './src/b2b-schema.ts',
     './src/b2c-schema.ts',
+    './src/growth-schema.ts',
   ],
   out: './migrations',
   dbCredentials: { url: process.env.DATABASE_OWNER_URL ?? '' },

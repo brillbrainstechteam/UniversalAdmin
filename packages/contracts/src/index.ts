@@ -21,5 +21,6 @@ export * from './rate-providers';
 export * from './dto/fulfillment';
 export * from './dto/orders';
 export * from './dto/customers';
+export * from './dto/growth';
 export * from './dto/b2b';
 export * from './openapi';

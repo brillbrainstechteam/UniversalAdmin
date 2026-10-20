@@ -91,3 +91,11 @@ Register or sign in as `customer@lumiere.demo`, add to cart, check out, and pay 
 moves). In the merchant admin the order page now has Fulfillment (pack → ship with a hand-typed carrier → deliver),
 Returns, Refunds (sandbox) and Customer messages (recorded, not sent); Orders → Returns lists return requests and
 Customers lists storefront accounts with their consent history.
+
+## Growth demo (Phase 10)
+As `owner@northwind.demo`: **Online Store** → New page (add blocks, Save draft, Publish), edit the announcement banner,
+theme and menus; "Preview drafts" gives a 15-minute storefront link. Add a domain ending in `.test` and Verify
+(development verification; real domains need the shown DNS TXT record). **Discounts** → create a code; enter it in
+the storefront cart. **Marketing** → create a segment and a campaign, then "Prepare audience" (only consented
+customers; nothing is sent). **Analytics** → reports with formulas and CSV. Open the store with
+`?utm_source=newsletter` to see attribution.

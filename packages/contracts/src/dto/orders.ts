@@ -2,6 +2,7 @@ import { CurrencyCode, Email, PageQuery, Reason, Timestamp, Uuid, Version, pageO
 import { z } from '../z';
 import { Address } from './admin';
 import { CustomerMessage, FulfillmentStatus, OrderReturn, Refund, Shipment } from './fulfillment';
+import { AppliedPromotions, Attribution } from './growth';
 import { ActorRef } from './inventory';
 import { PriceQuote, QuoteLine, QuoteLineInput, StorefrontQuote } from './pricing';
 
@@ -165,6 +166,8 @@ export const Order = OrderSummary.extend({
   expiresAt: Timestamp.nullable(),
   warnings: z.array(z.string()),
   customer: z.object({ id: Uuid, name: z.string(), email: z.string() }).nullable(),
+  attribution: Attribution.nullable(),
+  promotions: z.array(z.object({ code: z.string().nullable(), name: z.string(), amountMinor: MinorAmount })),
   shipments: z.array(Shipment),
   returns: z.array(OrderReturn),
   refunds: z.array(Refund),
@@ -204,6 +207,8 @@ export const Cart = z
     lines: z.array(z.object({ variantId: Uuid, serialItemId: Uuid.nullable(), quantity: z.number().int() })),
     /** Server price for the current lines (a fresh, time-limited quote), null when the cart is empty. */
     quote: StorefrontQuote.nullable(),
+    /** Phase 10: promotions in that quote, the entered code and why it did not apply (if it did not). */
+    promotions: AppliedPromotions,
     orderId: Uuid.nullable(),
   })
   .openapi('Cart');
@@ -219,6 +224,8 @@ export const CheckoutRequest = z
     acknowledgedTotalMinor: MinorAmount,
     contact: Contact,
     shippingAddress: Address,
+    /** Phase 10: marketing attribution (UTM parameters, landing path) as captured by the storefront. */
+    attribution: Attribution.nullable().default(null),
   })
   .openapi('CheckoutRequest');
 export type CheckoutRequest = z.infer<typeof CheckoutRequest>;

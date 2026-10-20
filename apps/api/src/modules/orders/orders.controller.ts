@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import {
   AcceptQuotationRequest,
+  ApplyDiscountCodeRequest,
   ApproveOrderRequest,
   CancelOrderRequest,
   CancelQuotationRequest,
@@ -263,6 +264,21 @@ export class StorefrontOrdersController {
     return { tenantId, channelId, features };
   }
 
+  /**
+   * Adds the signed-in storefront customer (orders link to them; customer-only discounts can apply). Mutations need
+   * the CSRF header — a cookie alone never attributes anything; reads (`read = true`) only price the cart.
+   */
+  private async withCustomer(
+    req: AppRequest,
+    scope: StorefrontScope,
+    read = false,
+  ): Promise<StorefrontScope> {
+    if (!read && req.header('x-uc-csrf') !== '1') return scope;
+    const shop = await this.customers.shop(req).catch(() => null);
+    const signedIn = shop ? await this.customers.resolve(shop, this.customers.tokenFrom(req)) : null;
+    return signedIn ? { ...scope, customerId: signedIn.customer.id } : scope;
+  }
+
   @Post('carts')
   @HttpCode(201)
   async createCart(@Req() req: AppRequest) {
@@ -275,7 +291,11 @@ export class StorefrontOrdersController {
     @Param(zod(IdParam)) p: Id,
     @Headers('x-cart-token') token: string | undefined,
   ) {
-    return this.checkout.getCart(await this.scope(req, 'cart', 120), p.id, token);
+    return this.checkout.getCart(
+      await this.withCustomer(req, await this.scope(req, 'cart', 120), true),
+      p.id,
+      token,
+    );
   }
 
   @Put('carts/:id/lines')
@@ -285,7 +305,23 @@ export class StorefrontOrdersController {
     @Headers('x-cart-token') token: string | undefined,
     @Body(zod(PutCartLinesRequest)) body: PutCartLinesRequest,
   ) {
-    return this.checkout.putLines(await this.scope(req, 'cart', 120), p.id, token, body.lines);
+    return this.checkout.putLines(
+      await this.withCustomer(req, await this.scope(req, 'cart', 120)),
+      p.id,
+      token,
+      body.lines,
+    );
+  }
+
+  @Put('carts/:id/discount')
+  async discount(
+    @Req() req: AppRequest,
+    @Param(zod(IdParam)) p: Id,
+    @Headers('x-cart-token') token: string | undefined,
+    @Body(zod(ApplyDiscountCodeRequest)) body: ApplyDiscountCodeRequest,
+  ) {
+    const scope = await this.withCustomer(req, await this.scope(req, 'cart-discount', 30));
+    return this.checkout.setDiscountCode(scope, p.id, token, body.code);
   }
 
   @Post('checkouts')
@@ -295,14 +331,7 @@ export class StorefrontOrdersController {
     @Headers('idempotency-key') key: string | undefined,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const scope = await this.scope(req, 'checkout', 20);
-    // A signed-in customer's order is linked to their account. Only with the CSRF header (a cookie alone never
-    // attributes an order); guests and other domains' sessions simply check out as guests.
-    if (req.header('x-uc-csrf') === '1') {
-      const shop = await this.customers.shop(req).catch(() => null);
-      const signedIn = shop ? await this.customers.resolve(shop, this.customers.tokenFrom(req)) : null;
-      if (signedIn) scope.customerId = signedIn.customer.id;
-    }
+    const scope = await this.withCustomer(req, await this.scope(req, 'checkout', 20));
     const result = await this.idempotency.run(
       {
         scope: `storefront:${scope.tenantId}:cart:${body.cartId}`,

@@ -35,6 +35,7 @@ const FORWARD = [
   'accept',
   'x-uc-csrf',
   'x-cart-token',
+  'x-preview-token',
   'origin',
   'idempotency-key',
   'user-agent',

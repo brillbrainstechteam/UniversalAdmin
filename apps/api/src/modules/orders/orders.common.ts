@@ -1,11 +1,21 @@
 import { randomUUID } from 'node:crypto';
-import type { Address, Contact, Order, OrderSettings, OrderSummary, QuoteLine } from '@uc/contracts';
+import type {
+  Address,
+  Attribution,
+  Contact,
+  Order,
+  OrderSettings,
+  OrderSummary,
+  QuoteLine,
+} from '@uc/contracts';
 import {
   addOrderEvent,
   channels,
   confirmOrder,
   connections,
   customers,
+  discountRedemptions,
+  discounts,
   locations,
   nextDocumentNumber,
   orderEvents,
@@ -126,6 +136,11 @@ export async function toOrder(tx: Tx, o: OrderRow): Promise<Order> {
       : Promise.resolve([]),
   ]);
   const returnList = await toReturns(tx, returnRows, new Map([[o.id, o]]));
+  const redemptions = await tx
+    .select({ code: discountRedemptions.code, name: discounts.name, amount: discountRedemptions.amountMinor })
+    .from(discountRedemptions)
+    .innerJoin(discounts, eq(discounts.id, discountRedemptions.discountId))
+    .where(eq(discountRedemptions.orderId, o.id));
   const actorIds = [
     ...new Set(
       [o.createdBy, o.approvedBy, ...events.map((e) => e.actorUserId)].filter((x): x is string => !!x),
@@ -205,6 +220,8 @@ export async function toOrder(tx: Tx, o: OrderRow): Promise<Order> {
     expiresAt: o.expiresAt ? iso(o.expiresAt) : null,
     warnings: (o.warnings as string[]) ?? [],
     customer: cust[0] ?? null,
+    attribution: (o.attribution as Attribution | null) ?? null,
+    promotions: redemptions.map((r) => ({ code: r.code, name: r.name, amountMinor: r.amount.toString() })),
     shipments: shipmentList,
     returns: returnList,
     refunds: refundList,
@@ -234,6 +251,8 @@ export interface PlaceOrderInput {
   /** What happens after the holds are placed. */
   /** Phase 08 B2B: buying company, delivery location, buyer, purchase order number. */
   companyId?: string | null;
+  /** Phase 10: marketing attribution from the storefront checkout. */
+  attribution?: Attribution | null;
   /** Phase 09: signed-in storefront customer. */
   customerId?: string | null;
   companyLocationId?: string | null;
@@ -301,6 +320,7 @@ export async function placeOrder(tx: Tx, input: PlaceOrderInput): Promise<OrderR
       checkoutKey: input.checkoutKey ?? null,
       companyId: input.companyId ?? null,
       customerId: input.customerId ?? null,
+      attribution: input.attribution ?? null,
       companyLocationId: input.companyLocationId ?? null,
       buyerId: input.buyerId ?? null,
       poNumber: input.poNumber ?? null,

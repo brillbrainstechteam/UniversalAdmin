@@ -15,6 +15,7 @@ import * as O from './dto/orders';
 import * as B from './dto/b2b';
 import * as F from './dto/fulfillment';
 import * as CU from './dto/customers';
+import * as G from './dto/growth';
 
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 type Scope = 'auth' | 'admin' | 'platform' | 'storefront' | 'system';
@@ -330,6 +331,39 @@ export const API_ROUTES: ApiRouteDoc[] = [
   { method: 'post', path: '/v1/admin/returns/{id}/decide', scope: 'admin', permission: 'fulfillment.manage', summary: 'Approve or reject a return', params: IdParam, body: F.DecideReturnRequest, response: F.OrderReturn, errors: [400, 404, 409] },
   { method: 'post', path: '/v1/admin/returns/{id}/receive', scope: 'admin', permission: 'fulfillment.manage', summary: 'Receive a return: restock (ledger return_receive) or write off', params: IdParam, body: F.ReceiveReturnRequest, response: F.OrderReturn, errors: [400, 404, 409, 422] },
   { method: 'post', path: '/v1/admin/orders/{id}/refunds', scope: 'admin', permission: 'payments.refund', summary: 'Refund up to captured minus refunded; settled by the (sandbox) gateway callback', params: IdParam, body: F.CreateRefundRequest, response: O.Order, status: 201, idempotent: true, errors: [400, 403, 404, 409] },
+  // ---- Phase 10: online store, discounts, marketing, reports ----
+  { method: 'get', path: '/v1/admin/online-store/documents', scope: 'admin', permission: 'content.manage', summary: 'Theme, menus, banner and pages of a storefront channel', query: G.SiteQuery, response: G.SiteDocumentList, errors: [404] },
+  { method: 'get', path: '/v1/admin/online-store/documents/{id}', scope: 'admin', permission: 'content.manage', summary: 'Document with draft, published content and versions', params: IdParam, response: G.SiteDocument, errors: [404] },
+  { method: 'post', path: '/v1/admin/online-store/pages', scope: 'admin', permission: 'content.manage', summary: 'Create a page (draft)', body: G.CreatePageRequest, response: G.SiteDocument, status: 201, errors: [400, 404, 409] },
+  { method: 'put', path: '/v1/admin/online-store/documents/{id}/draft', scope: 'admin', permission: 'content.manage', summary: 'Save draft content (validated per kind)', params: IdParam, body: G.SaveDraftRequest, response: G.SiteDocument, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/online-store/documents/{id}/publish', scope: 'admin', permission: 'content.manage', summary: 'Publish the draft, or an earlier version (rollback), as a new immutable version', params: IdParam, body: G.PublishRequest, response: G.SiteDocument, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/online-store/documents/{id}/unpublish', scope: 'admin', permission: 'content.manage', summary: 'Take a page or banner off the storefront', params: IdParam, body: G.DocumentActionRequest, response: G.SiteDocument, errors: [404, 409] },
+  { method: 'post', path: '/v1/admin/online-store/preview-tokens', scope: 'admin', permission: 'content.manage', summary: 'Short-lived signed token to preview drafts on the storefront', body: G.PreviewTokenRequest, response: G.PreviewToken, status: 201, errors: [404] },
+  { method: 'get', path: '/v1/admin/online-store/redirects', scope: 'admin', permission: 'content.manage', summary: 'Redirects of a storefront channel', query: G.SiteQuery, response: z.object({ items: z.array(G.Redirect) }), errors: [404] },
+  { method: 'post', path: '/v1/admin/online-store/redirects', scope: 'admin', permission: 'content.manage', summary: 'Add a redirect (no chains or loops)', body: G.CreateRedirectRequest, response: G.Redirect, status: 201, errors: [400, 404, 409] },
+  { method: 'delete', path: '/v1/admin/online-store/redirects/{id}', scope: 'admin', permission: 'content.manage', summary: 'Remove a redirect', params: IdParam, status: 204, errors: [404] },
+  { method: 'get', path: '/v1/admin/online-store/domains', scope: 'admin', permission: 'content.manage', summary: 'Domains of a storefront channel with verification records', query: G.SiteQuery, response: z.object({ items: z.array(G.StoreDomain) }), errors: [404] },
+  { method: 'post', path: '/v1/admin/online-store/domains', scope: 'admin', permission: 'content.manage', summary: 'Connect a custom domain (pending until verified by DNS TXT)', body: G.AddDomainRequest, response: G.StoreDomain, status: 201, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/online-store/domains/{id}/verify', scope: 'admin', permission: 'content.manage', summary: 'Check the DNS TXT record and verify the domain', params: IdParam, response: G.StoreDomain, errors: [404, 422] },
+  { method: 'delete', path: '/v1/admin/online-store/domains/{id}', scope: 'admin', permission: 'content.manage', summary: 'Remove a non-primary domain', params: IdParam, status: 204, errors: [404, 409] },
+  { method: 'get', path: '/v1/admin/discounts', scope: 'admin', permission: 'discounts.manage', summary: 'Discounts with derived state', query: G.DiscountListQuery, response: G.DiscountPage },
+  { method: 'post', path: '/v1/admin/discounts', scope: 'admin', permission: 'discounts.manage', summary: 'Create a discount (automatic or code)', body: G.SaveDiscountRequest, response: G.Discount, status: 201, errors: [400, 409] },
+  { method: 'put', path: '/v1/admin/discounts/{id}', scope: 'admin', permission: 'discounts.manage', summary: 'Update a discount (terms fixed once used)', params: IdParam, body: G.SaveDiscountRequest, response: G.Discount, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/marketing/segments', scope: 'admin', permission: 'marketing.manage', summary: 'Customer segments with live counts', response: z.object({ items: z.array(G.Segment) }) },
+  { method: 'post', path: '/v1/admin/marketing/segments', scope: 'admin', permission: 'marketing.manage', summary: 'Create a segment', body: G.SaveSegmentRequest, response: G.Segment, status: 201, errors: [400, 409] },
+  { method: 'put', path: '/v1/admin/marketing/segments/{id}', scope: 'admin', permission: 'marketing.manage', summary: 'Update a segment', params: IdParam, body: G.SaveSegmentRequest, response: G.Segment, errors: [400, 404, 409] },
+  { method: 'get', path: '/v1/admin/marketing/segments/{id}/members', scope: 'admin', permission: 'marketing.manage', summary: 'Customers in a segment now', params: IdParam, query: PageQuery, response: G.SegmentMembers, errors: [404] },
+  { method: 'get', path: '/v1/admin/marketing/campaigns', scope: 'admin', permission: 'marketing.manage', summary: 'Campaigns', query: PageQuery, response: G.CampaignPage },
+  { method: 'post', path: '/v1/admin/marketing/campaigns', scope: 'admin', permission: 'marketing.manage', summary: 'Create a campaign draft', body: G.SaveCampaignRequest, response: G.Campaign, status: 201, errors: [400] },
+  { method: 'put', path: '/v1/admin/marketing/campaigns/{id}', scope: 'admin', permission: 'marketing.manage', summary: 'Edit a draft campaign', params: IdParam, body: G.SaveCampaignRequest, response: G.Campaign, errors: [400, 404, 409] },
+  { method: 'post', path: '/v1/admin/marketing/campaigns/{id}/prepare', scope: 'admin', permission: 'marketing.manage', summary: 'Snapshot consented recipients (sending is blocked: no connector)', params: IdParam, body: z.object({ version: z.number().int() }), response: G.Campaign, errors: [404, 409] },
+  { method: 'get', path: '/v1/admin/marketing/campaigns/{id}/recipients', scope: 'admin', permission: 'marketing.manage', summary: 'Prepared recipients (status not_sent)', params: IdParam, query: PageQuery, response: z.object({ items: z.array(z.object({ id: Uuid, customerId: Uuid, address: z.string(), status: z.string(), statusReason: z.string().nullable() })), nextCursor: z.string().nullable() }), errors: [404] },
+  { method: 'get', path: '/v1/admin/reports', scope: 'admin', permission: 'analytics.read', summary: 'Report catalogue with metric formulas', response: G.ReportList },
+  { method: 'get', path: '/v1/admin/reports/{key}', scope: 'admin', permission: 'analytics.read', summary: 'Run a report (JSON or CSV), with generatedAt', params: z.object({ key: G.ReportKey }), query: G.ReportQuery, response: G.ReportResult, errors: [400] },
+  { method: 'get', path: '/v1/storefront/site', scope: 'storefront', summary: 'Published theme, menus, banner and page list (drafts with a valid X-Preview-Token)', response: G.StorefrontSite, errors: [404] },
+  { method: 'get', path: '/v1/storefront/pages/{slug}', scope: 'storefront', summary: 'A published page', params: z.object({ slug: G.PageSlug }), response: G.StorefrontPage, errors: [404] },
+  { method: 'get', path: '/v1/storefront/redirects', scope: 'storefront', summary: 'Where an old path now lives', query: G.RedirectQuery, response: G.RedirectLookup, errors: [404] },
+  { method: 'put', path: '/v1/storefront/carts/{id}/discount', scope: 'storefront', summary: 'Enter or clear a discount code; the cart is re-priced and says why a code does not apply', params: IdParam, body: G.ApplyDiscountCodeRequest, response: O.Cart, errors: [404, 409] },
 ];
 const SECURITY: Record<Scope, RouteConfig['security']> = {
   auth: [],
@@ -397,7 +431,7 @@ export function buildOpenApiDocument(
     openapi: '3.1.0',
     info: {
       title: 'Universal Commerce OS API',
-      version: '1.0.0-phase09',
+      version: '1.0.0-phase10',
       description:
         'Multi-tenant commerce platform API. Errors use {code,message,details,correlationId}. Decimals are strings; money is {amountMinor,currency}.',
     },
